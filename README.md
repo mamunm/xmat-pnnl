@@ -55,12 +55,7 @@ What's all the bells and whistles this code can perform:
 
 The organization of the xmat-pnnl is as follows:
 
-.
-├── README.md
-├── data_processing
-├── xmat_pnnl_code
-├── xmat_pnnl_data
-└── xmat_pnnl_model
+![Tree view of the file system](images/code_tree.png)
 
 * data_processing: contains processing of individual dataset and then saves the resulting data in a dictionary format in a `.npy` file.
 * xmat_pnnl_code: contains the code or wrapper for individual algorithm.
