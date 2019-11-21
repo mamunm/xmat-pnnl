@@ -64,3 +64,29 @@ The organization of the xmat-pnnl is as follows:
 
 In the below, I will mainly document all the code or wrapper for different algorithm and how to use them.
 
+### Loading data and saving them 
+
+`load_data` will ease loading the data into nice `pd.DataFrame` format. Below I demonstrate a code to quickly load the data:
+
+```python
+import numpy as np
+import pandas as pd
+import xmat_pnnl_code as xcode 
+import mendeleev # To use atomic properties
+
+#Load the data
+data_df, features_description, alloy_metadata = xcode.load_data('9Cr_Data')
+#Get the weighted atomic number for each alloy
+ele = [k for k, v in features_description.items() if 'Element' in v]
+AN = {k: getattr(mendeleev, k).atomic_number for k in ele}
+data_df['Weighted_AN'] = data_df[ele].mul(AN, axis=1).sum(axis=1)/100
+
+#Save the cleaned data into a csv for future reference
+data_df.to_csv('Cleaned_data.csv', index=False)
+np.save('features.npy', features_description)
+alloy_metadata.to_csv('alloy_metadata.csv')
+```
+
+This `xcode.load_data` will load the data. The argument to this function can be wither `9Cr_Data` or `Aus_Steel_Data`. Depending on the argument it will load either of the above data and it will return the data in a dataframe format, feature description as a dictionary format, and alloy metadata into another dataframe format.
+
+Here, I also added weighted atomic number to the dataframe as it will be useful later in our model building process. Then I saved the dataframes as csv file and the dictionary as a `npy` file. 
