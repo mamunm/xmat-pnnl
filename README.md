@@ -75,7 +75,8 @@ import xmat_pnnl_code as xcode
 import mendeleev # To use atomic properties
 
 #Load the data
-data_df, features_description, alloy_metadata = xcode.load_data('9Cr_Data')
+data_df, features_description, alloy_metadata = xcode.load_data(
+    data_file='9Cr_Data')
 #Get the weighted atomic number for each alloy
 ele = [k for k, v in features_description.items() if 'Element' in v]
 AN = {k: getattr(mendeleev, k).atomic_number for k in ele}
@@ -87,6 +88,6 @@ np.save('features.npy', features_description)
 alloy_metadata.to_csv('alloy_metadata.csv')
 ```
 
-This `xcode.load_data` will load the data. The argument to this function can be wither `9Cr_Data` or `Aus_Steel_Data`. Depending on the argument it will load either of the above data and it will return the data in a dataframe format, feature description as a dictionary format, and alloy metadata into another dataframe format.
+This `xcode.load_data` will load the data. The argument to this function can be either `9Cr_Data` or `Aus_Steel_Data`. Depending on the argument it will load either of the above data and it will return the data in a dataframe format, feature description as a dictionary format, and alloy metadata into another dataframe format.
 
 Here, I also added weighted atomic number to the dataframe as it will be useful later in our model building process. Then I saved the dataframes as csv file and the dictionary as a `npy` file. 

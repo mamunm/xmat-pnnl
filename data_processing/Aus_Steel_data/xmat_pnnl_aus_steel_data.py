@@ -8,7 +8,8 @@ import xmat_pnnl_code as xcode
 import mendeleev 
 
 #Load the data
-data_df, features_description, alloy_metadata = xcode.load_data('Aus_Steel_Data')
+data_df, features_description, alloy_metadata = xcode.load_data(
+        data_file='Aus_Steel_Data')
 
 #Get the weighted atomic number for each alloy
 ele = [k for k, v in features_description.items() if 'Element' in v]
