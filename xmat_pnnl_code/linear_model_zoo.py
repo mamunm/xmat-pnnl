@@ -85,6 +85,7 @@ class Linear_Model_Zoo:
                     model = sm.OLS(y, X).fit()
                     self.zoo.append({'descriptors': list(X.columns),
                                      'params': model.params.to_dict(),
+                                     'log_likelihood': model.llf,
                                      'aic': model.aic,
                                      'bic': model.bic,
                                      'Model df': model.df_model,
@@ -98,12 +99,19 @@ class Linear_Model_Zoo:
                     params = {'const': model.intercept_}
                     for k, v in zip(X.columns, model.coef_):
                         params[k] = v
+                    ss = np.sum((y - model.predict(X))**2)
+                    n = len(y)
+                    ll = - (n/2) * np.log(2*np.pi) - (n/2) * np.log(ss/n)
+                    ll -= -(n/2)
+                    aic = - 2 * ll + 2 * (len(model.coef_) + 1)
+                    bic = - 2 * ll + (len(model.coef_) + 1) * np.log(n)
                     self.zoo.append({'descriptors': descriptors,
                                      'params': params,
-                                     'aic': ,
-                                     'bic': ,
+                                     'log_likelihood': ll,
+                                     'aic': aic,
+                                     'bic': bic,
                                      'Model df': len(X.columns) + 1,
-                                     'n_data': len(y),
+                                     'n_data': n,
                                      'R-squared': model.score(X, y)})
     
     @property
