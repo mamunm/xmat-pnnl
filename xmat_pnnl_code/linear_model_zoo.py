@@ -4,6 +4,7 @@ import xmat_pnnl_code as xcode
 from itertools import combinations
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
 
 class Linear_Model_Zoo:
     def __init__(self, df=None, method='statsmodel'):
@@ -12,11 +13,11 @@ class Linear_Model_Zoo:
             msg = 'Only statsmodel OLS and '
             msg += 'sklearn LinearRegression is implemented.'
             raise MethodNotImplementedError(msg)
-        self.df = df
+        self.data = df
         self.method = method
     
     @classmethod
-    def from_project_name(cls, project_name='9Cr_Data', method='statsmodel')
+    def from_project_name(cls, project_name='9Cr_Data', method='statsmodel'):
         if project_name not in ['9Cr_Data', 'Aus_Steel_Data']:
             msg = 'The requested file does not exist.'
             raise ProjectNotImplementedError(msg)
@@ -25,9 +26,9 @@ class Linear_Model_Zoo:
             msg += 'sklearn LinearRegression is implemented.'
             raise MethodNotImplementedError(msg)
         path = '/'.join(xcode.__path__[0].split('/')[:-1])
-        if data_file == 'Aus_Steel_Data':
+        if project_name == 'Aus_Steel_Data':
             path += '/data_processing/Aus_Steel_data/Cleaned_data.csv'
-        if data_file == '9Cr_Data':
+        if project_name == '9Cr_Data':
             path += '/data_processing/9Cr_data/Cleaned_data.csv'
         keep_columns = ['ID', 'CT_Temp', 'CT_CS', 'Weighted_AN', 'CT_RT']
         df = pd.read_csv(path)[keep_columns]
@@ -36,6 +37,7 @@ class Linear_Model_Zoo:
 
     def data_augmentation(self):
         self.var_cols = ['CT_Temp', 'CT_CS']
+        '''
         for i in combinations(['CT_Temp', 'CT_CS'], 2):
             self.data['_'.join(i)] = self.data[list(i)].prod(axis=1)
             self.var_cols.append('_'.join(i))
@@ -55,6 +57,7 @@ class Linear_Model_Zoo:
             for f in ['log', 'exp', 'P2', '1/P', '1/P2']:
                 self.data['_'.join([d, f])] = self.data[d].apply(func[f])
                 self.var_cols.append('_'.join([d, f]))
+        '''
 
     def get_cleaned_data(self, X, y, n_var):
         
@@ -73,19 +76,35 @@ class Linear_Model_Zoo:
             print('Working on {} of {}.'.format(i, len(self.var_cols)))
             for j in combinations(self.var_cols, i):
                 X = self.data[list(j)]
-                X = sm.add_constant(X)
                 y = self.data['CT_RT']
                 X, y = self.get_cleaned_data(X, y, i)
                 if X.empty:
                     continue
-                model = sm.OLS(y, X).fit()
-                self.zoo.append({'descriptors': list(j),
-                        'params': model.params.to_dict(),
-                        'aic': model.aic,
-                        'bic': model.bic,
-                        'Model df': model.df_model,
-                        'n_data': model.nobs,
-                        'R-squared': model.rsquared})
+                if self.method == 'statsmodel':
+                    X = sm.add_constant(X)
+                    model = sm.OLS(y, X).fit()
+                    self.zoo.append({'descriptors': list(X.columns),
+                                     'params': model.params.to_dict(),
+                                     'aic': model.aic,
+                                     'bic': model.bic,
+                                     'Model df': model.df_model,
+                                     'n_data': model.nobs,
+                                     'R-squared': model.rsquared})
+                if self.method == 'sklearn':
+                    descriptors = ['const'] + list(X.columns)
+                    X = X.to_numpy()
+                    y = y.to_numpy()
+                    model = LinearRegression().fit(X, y)
+                    params = {'const': model.intercept_}
+                    for k, v in zip(X.columns, model.coef_):
+                        params[k] = v
+                    self.zoo.append({'descriptors': descriptors,
+                                     'params': params,
+                                     'aic': ,
+                                     'bic': ,
+                                     'Model df': len(X.columns) + 1,
+                                     'n_data': len(y),
+                                     'R-squared': model.score(X, y)})
     
     @property
     def best_model(self):
@@ -101,10 +120,11 @@ class Linear_Model_Zoo:
         plt.title('BIC Envelope plot')
         plt.xlabel("# of descriptors", fontsize=14)
         plt.ylabel("BIC", fontsize=14)
-        data = [(len(v['slope'])+1, v['BIC']) for v in self.zoo.values()]
+        data = [(len(v['descriptors']), v['bic']) for v in self.zoo]
         plt.scatter(*zip(*data), color="#1A4876", s=40)
         min_data = []
-        for ndes in range(2, len(self.descriptors) + 2):
+        unique_descriptors = list(set(i[0] for i in data)).sort()
+        for ndes in range(2, unique_descriptors):
             min_data.append(min([i for i in data if i[0]==ndes],
                     key=lambda x: x[1]))
         plt.plot(*zip(*min_data), color="#158078", linewidth=3)
@@ -116,10 +136,10 @@ class Linear_Model_Zoo:
         return plt
 
 if __name__ == "__main__":
-    lmz = Linear_Model_Zoo()
+    lmz = Linear_Model_Zoo.from_project_name()
     lmz.data_augmentation()
     lmz.build_zoo()
     print(lmz.best_model)
     lmz.save_zoo()
-    lmz.plot_envelope.show()
+    lmz.plot_envelope().show()
 
