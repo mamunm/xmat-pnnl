@@ -26,6 +26,7 @@ numpy>=1.12
 sklearn>=0.20.1
 matplotlib>=3.1
 pandas>=0.25.1
+statsmodel>=0.10.1
 ```
 
 After, you have all the dependencies installed, download the code from the bitbucket repo using:
@@ -34,11 +35,12 @@ After, you have all the dependencies installed, download the code from the bitbu
 git clone ssh://git@stash.pnnl.gov:7999/~visw924/xmat-pnnl.git
 ```
 
-Though you can run `setup.py` to install the package using:
+If you don't have access to bitbucket pnnl stash, you can get it from github private repo:
 
 ```shell
-python setup.py install 
+git clone git@github.com:mamunm/xmat-pnnl.git
 ```
+
 
 I would recommend adding the following line in your `PYTHONPATH`:
 
