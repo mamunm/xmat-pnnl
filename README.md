@@ -143,6 +143,20 @@ for alloy_id in ID:
     df.to_csv('shapley_values/{}.csv'.format(alloy_id))
 ```
 
+Running the shapley code produces the following output:
+
+```shell
+        ID  CT_Temp    CT_CS    CT_RT        LMP   shapley  shapley_percentage
+0  9Cr-001    650.0  206.843    665.8  20.475643  0.127089           12.896406
+1  9Cr-001    650.0  189.606   1187.5  20.851744  0.120868           12.265177
+2  9Cr-001    650.0  172.369   1454.0  20.983348  0.121536           12.332889
+3  9Cr-001    650.0  155.132   2344.0  21.293749  0.119407           12.116898
+4  9Cr-001    650.0  153.753   3469.0  21.548554  0.120725           12.250578
+5  9Cr-001    650.0  137.895   5388.0  21.834754  0.123645           12.546918
+6  9Cr-001    650.0  120.658  12730.0  22.393616  0.125027           12.687171
+7  9Cr-001    650.0  103.421  25234.0  22.838366  0.127163           12.903962
+```
+
 Problem: This code is very slow as computing the shapley value leads to combinatorial explosion for large number of samples. We may need to use EMSL's computing power, if possible. 
 
 ** Note: it would be a nice scientific paper to find the `C(T)` from first principles calculations.
