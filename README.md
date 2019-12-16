@@ -160,3 +160,139 @@ Running the shapley code produces the following output:
 Problem: This code is very slow as computing the shapley value leads to combinatorial explosion for large number of samples. We may need to use EMSL's computing power, if possible. 
 
 ** Note: it would be a nice scientific paper to find the `C(T)` from first principles calculations.
+
+
+## C matching scheme
+
+Another idea I'm trying is building a predictive model for the C(T, material) of LMP equation. We know that LMP should follow a universal master curve but since we don't know the material and temperature specific constant (which we assumed to be 25 for all cases), we get different curve for different alloy system. My idea was that if we can predict specific C for each alloy than we can use one LMP equation for all the alloy. To implement this idea, I wrote a code that will try to find the C that will yield the maximum utility for each alloy with respect to the reference alloy system. The algorithm is summarized below:
+
+1. Find the reference model and store it to make future prediction.
+2. Now, initialize the optimization with a seed C value (I used 25)
+3. get the score that corresponds to this LMP
+4. Use scipy.optimize.fmin to get the optimum C value
+
+When I used quadratic equation for the LMP model, my converged score were very poor in comparison to the native model score. 
+
+```shell
+Alloy          native    Converged  Difference
+ID             score     score
+9Cr-001   :   0.985460   0.985460   0.000000
+9Cr-024   :   0.967858   0.796379   0.171479
+9Cr-025   :   0.969674   0.782235   0.187439
+9Cr-026   :   0.944988   0.756337   0.188650
+9Cr-027   :   0.953035   0.794080   0.158956
+9Cr-028   :   0.957454   0.842460   0.114993
+9Cr-029   :   0.963882   0.923481   0.040401
+9Cr-030   :   0.920761   0.741371   0.179390
+9Cr-031   :   0.957299   0.633809   0.323490
+9Cr-032   :   0.955604   0.728485   0.227119
+9Cr-033   :   0.964690   0.847679   0.117011
+9Cr-034   :   0.955508   0.841343   0.114165
+9Cr-035   :   0.892425   0.190097   0.702328
+9Cr-036   :   0.968152   0.777269   0.190883
+9Cr-037   :   0.957900   0.777518   0.180382
+9Cr-038   :   0.901355   0.160278   0.741077
+9Cr-043   :   0.950264   0.735930   0.214334
+9Cr-044   :   0.950957  -2.271157   3.222114
+9Cr-045   :   0.951751  -1.798770   2.750521
+9Cr-046   :   0.956075  -1.346661   2.302736
+9Cr-047   :   0.954882  -1.831709   2.786590
+9Cr-048   :   0.955411  -1.719256   2.674667
+9Cr-049   :   0.965111  -2.795596   3.760707
+9Cr-050   :   0.950353  -1.854816   2.805169
+9Cr-051   :   0.968716  -2.078190   3.046906
+9Cr-052   :   0.957131  -1.505532   2.462663
+9Cr-053   :   0.965246  -2.997341   3.962588
+9Cr-054   :   0.976627  -2.967974   3.944602
+9Cr-055   :   0.958634   0.858227   0.100407
+9Cr-058   :   0.957414   0.583181   0.374233
+9Cr-059   :   0.958473   0.283372   0.675100
+9Cr-060   :   0.937985   0.713322   0.224663
+9Cr-061   :   0.967107   0.821322   0.145784
+9Cr-062   :   0.961953   0.832017   0.129937
+9Cr-063   :   0.970352   0.860304   0.110049
+9Cr-064   :   0.871318   0.733738   0.137580
+9Cr-065   :   0.944139   0.564356   0.379783
+9Cr-066   :   0.935804   0.800466   0.135337
+9Cr-067   :   0.992766   0.885757   0.107010
+9Cr-068   :   0.986818   0.820517   0.166301
+9Cr-069   :   0.979048   0.883209   0.095839
+9Cr-070   :   0.959300   0.932539   0.026761
+9Cr-071   :   0.957543   0.921532   0.036010
+9Cr-072   :   0.959529   0.917995   0.041534
+9Cr-073   :   0.948541   0.899387   0.049154
+9Cr-074   :   0.948943   0.899030   0.049914
+9Cr-075   :   0.946294   0.901225   0.045069
+9Cr-076   :   0.936709   0.917189   0.019520
+9Cr-077   :   0.950270   0.904520   0.045750
+9Cr-078   :   0.944435   0.891029   0.053406
+9Cr-079   :   0.937483   0.616791   0.320692
+9Cr-080   :   0.943163   0.298161   0.645002
+9Cr-082   :   0.975563   0.935110   0.040453
+```
+
+In order to get better converged value, I plotted the LMP as `log(stress) vs LMP`. Below is the three representative curves for that:
+
+![LMP plot for 9Cr-001](images/9Cr-001_logged.png)
+![LMP plot for 9Cr-024](images/9Cr-024_logged.png)
+![LMP plot for 9Cr-025](images/9Cr-025_logged.png)
+
+With this equation, our converged score agree very well with the native score except for alloy `9Cr-080`. I need to look further into the data. But I think we can use the converged `C` values to build a predictive model now.
+
+```shell
+Alloy          native    Converged  Difference
+ID             score     score
+9Cr-001   :   0.987691   0.987691   0.000000
+9Cr-024   :   0.941155   0.945690  -0.004535
+9Cr-025   :   0.934851   0.939127  -0.004276
+9Cr-026   :   0.932081   0.947176  -0.015095
+9Cr-027   :   0.918518   0.915534   0.002984
+9Cr-028   :   0.922469   0.928989  -0.006520
+9Cr-029   :   0.937528   0.956385  -0.018858
+9Cr-030   :   0.919338   0.901311   0.018026
+9Cr-031   :   0.928749   0.871088   0.057661
+9Cr-032   :   0.936728   0.890224   0.046505
+9Cr-033   :   0.941000   0.916422   0.024578
+9Cr-034   :   0.943001   0.893947   0.049054
+9Cr-035   :   0.852745   0.856983  -0.004238
+9Cr-036   :   0.943034   0.942969   0.000065
+9Cr-037   :   0.950390   0.932195   0.018195
+9Cr-038   :   0.868061   0.853396   0.014665
+9Cr-043   :   0.925977   0.924942   0.001036
+9Cr-044   :   0.942126   0.962283  -0.020157
+9Cr-045   :   0.935053   0.975960  -0.040908
+9Cr-046   :   0.934580   0.979138  -0.044558
+9Cr-047   :   0.934309   0.973261  -0.038952
+9Cr-048   :   0.924836   0.975048  -0.050212
+9Cr-049   :   0.959383   0.960293  -0.000910
+9Cr-050   :   0.926278   0.970679  -0.044401
+9Cr-051   :   0.950010   0.978607  -0.028597
+9Cr-052   :   0.928884   0.975902  -0.047018
+9Cr-053   :   0.961290   0.957828   0.003462
+9Cr-054   :   0.972875   0.972345   0.000529
+9Cr-055   :   0.922453   0.905731   0.016723
+9Cr-058   :   0.934315   0.946802  -0.012486
+9Cr-059   :   0.881979   0.861944   0.020035
+9Cr-060   :   0.924867   0.935296  -0.010429
+9Cr-061   :   0.945039   0.942747   0.002293
+9Cr-062   :   0.899394   0.911713  -0.012319
+9Cr-063   :   0.944614   0.961081  -0.016467
+9Cr-064   :   0.912375   0.947590  -0.035214
+9Cr-065   :   0.931727   0.923376   0.008351
+9Cr-066   :   0.944689   0.930558   0.014131
+9Cr-067   :   0.946238   0.939959   0.006279
+9Cr-068   :   0.963087   0.912079   0.051008
+9Cr-069   :   0.965227   0.960016   0.005211
+9Cr-070   :   0.931970   0.920428   0.011542
+9Cr-071   :   0.927307   0.902193   0.025114
+9Cr-072   :   0.914422   0.884241   0.030181
+9Cr-073   :   0.928457   0.931245  -0.002788
+9Cr-074   :   0.914305   0.877695   0.036610
+9Cr-075   :   0.907114   0.881785   0.025329
+9Cr-076   :   0.942014   0.921113   0.020901
+9Cr-077   :   0.912660   0.892783   0.019877
+9Cr-078   :   0.926579   0.926259   0.000320
+9Cr-079   :   0.906853   0.910842  -0.003989
+9Cr-080   :   0.852456   0.486062   0.366394
+9Cr-082   :   0.958195   0.956602   0.001594
+```

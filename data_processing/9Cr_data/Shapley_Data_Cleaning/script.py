@@ -26,17 +26,20 @@ keep_column = ['ID', 'CT_Temp', 'CT_CS', 'CT_RT']
 data = data[keep_column]
 C = 25
 data['LMP'] = 1e-3 * (data['CT_Temp']) * (np.log(data['CT_RT']) + C)
+score_lib = {}
 
 for alloy_id in ID:
     df = data[data['ID'] == alloy_id]
     poly = PolyFit(df=df[['LMP', 'CT_CS']], target='CT_CS', degree=2)
     poly.fit()
     print('Score for {}: {}'.format(alloy_id, poly.score))
-    poly.plot_model(text='Score for {}: {}'.format(
-        alloy_id, poly.score)).savefig(
-                'poly_fit_curves/{}.png'.format(alloy_id))
+    score_lib[alloy_id] = poly.score
+    poly.plot_model().savefig('poly_fit_curves/{}.png'.format(alloy_id))
     plt.clf()
+    
+    np.save('poly_score.npy', score_lib)
 
+    '''
     # Run shapley on the data
     shapley = Shapley(df=df[['LMP', 'CT_CS']], target='CT_CS', degree=2)
     phi, phi_percentage = shapley.get_phi()
@@ -44,4 +47,4 @@ for alloy_id in ID:
     df['shapley_percentage'] = phi_percentage
     print(df)
     df.to_csv('shapley_values/{}.csv'.format(alloy_id))
-
+    '''
