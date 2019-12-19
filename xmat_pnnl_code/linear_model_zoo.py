@@ -6,7 +6,7 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 
-class Linear_Model_Zoo:
+class LinearModelZoo:
     def __init__(self, df=None, method='statsmodel'):
 
         if method not in ['statsmodel', 'sklearn']:
@@ -35,7 +35,7 @@ class Linear_Model_Zoo:
         df = df[df.Weighted_AN != 0]
         return cls(df=df, method=method) 
 
-    def data_augmentation(self):
+    def data_augmentation(self, ):
         self.var_cols = ['CT_Temp', 'CT_CS']
         '''
         for i in combinations(['CT_Temp', 'CT_CS'], 2):

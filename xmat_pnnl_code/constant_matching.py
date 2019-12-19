@@ -46,7 +46,7 @@ class ConstantMatcher:
                             np.log(g['CT_RT']) + 25)
                     poly = PolyFit(df=g[['LMP', 'CT_CS']], 
                             target='CT_CS', 
-                            degree=1,
+                            degree=self.degree,
                             logify_y=self.logify_y)
                     poly.fit()
                     model = poly.model

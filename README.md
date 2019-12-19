@@ -296,3 +296,176 @@ ID             score     score
 9Cr-080   :   0.852456   0.486062   0.366394
 9Cr-082   :   0.958195   0.956602   0.001594
 ```
+
+## Modeling C:
+
+If for a specific alloy system, we have C available (such as for all the above alloy materials), we will prefer using them. Otherwise, we will make a model to parameterize the C for unknown materials. In this exercise, we used Gaussian Process Regression to parameterize the model (I tried linear and polynomial regression but the performance is not satisfactory) and Shapley value to quantize the feature importance.
+
+At first let's look at the scatter plot of different features:
+
+![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_AN.png)
+![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_atomic_weight.png)
+![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_boiling_point.png)
+![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_dipole_polarizability.png)
+![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_evaporation_heat.png)
+![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_heat_of_formation.png)
+![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_melting_point.png)
+
+Now, let's run our GP regressor in this data:
+
+```python
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+import matplotlib.pyplot as plt
+import seaborn as sns
+from xmat_pnnl_code import ProcessData
+from xmat_pnnl_code import SKGP
+from sklearn.gaussian_process.kernels import (RBF, WhiteKernel,
+        DotProduct, Matern)
+
+#Load the data
+path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data/LMP/'
+data = np.load(path + 'constant_matcher_score_lib.npy', allow_pickle=True)[()]
+del data['9Cr-080'] #questionable action
+
+#Load the features
+path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data/'
+path += 'Generate_New_Fingerprints/fingerprints_data.csv'
+df = pd.read_csv(path)
+
+agg_data = []
+
+f_col = [i for i in df.columns if i.startswith('Weighted')]
+
+for k, v in data.items():
+    SRS = df[df.ID == k].iloc[0]
+    f = [SRS[i] for i in f_col]
+    agg_data.append([k] + f + [v['C']])
+
+columns=['ID'] + f_col + ['C']
+
+df = pd.DataFrame(agg_data, columns=columns)
+
+'''
+#Explore individual model
+features = ['Atomic Number', 'Melting Point', 'Metallic Radius']
+for fp in features:
+    lr = LinFit(df=df[[fp, 'C']], target='C', prop=fp)
+    lr.fit()
+    print('Score for {}: {}'.format(fp, lr.score))
+    lr.plot_model().show()
+    plt.clf()
+    lr.plot_parity().show()
+    plt.clf()
+
+g = sns.PairGrid(df, x_vars=[i for i in df.columns if i not in['ID', 'C']],
+        y_vars='C')
+g = g.map(plt.scatter)
+plt.show()
+'''
+
+'''
+for i in df.columns:
+    if i in ['ID', 'C']:
+        continue
+    df.plot(x=i, y='C', kind='scatter')
+    plt.savefig('scatter_plot/{}.png'.format(i))
+    plt.clf()
+'''
+
+X = df[[i for i in df.columns if i not in ['ID', 'C']]].to_numpy()
+y = df['C'].to_numpy()
+
+pd = ProcessData(X=X, y=y, metadata=[i for i in df.columns
+    if i not in ['ID', 'C']])
+pd.clean_data()
+X, y, metadata = pd.get_data()
+del pd
+
+kernel = 1.0*RBF(length_scale=1.0) + WhiteKernel(noise_level=1.0)
+kernel += 1.0*DotProduct(sigma_0=1.0) + 1.0*Matern(length_scale=1.0)
+skgp = SKGP(X=X, y=y, kernel=kernel, validation='leave_one_out')
+skgp.run_GP()
+skgp.__dict__['features'] = metadata
+print(skgp.__dict__)
+
+np.save('gp_run.npy', skgp.__dict__)
+skgp.plot_parity(data='train', err_bar=True).savefig(
+        'train_parity_plot.png')
+skgp.plot_parity(data='test', err_bar=True).savefig(
+        'test_parity_plot.png')
+
+```
+
+
+When we run this script, we see the follwing results for the prediction of C:
+
+```shell
+RMSE_test: 1.0655048795161435
+RMSE_train: 0.05354776913232841
+MAE_test: 0.6874357759093291
+MAE_train: 0.01539474566385372
+r2_score_test: 0.8134786841660422
+r2_score_train: 0.9995289138356854
+final_kernel: 36.8**2 * RBF(length_scale=2.4e+04) + WhiteKernel(noise_level=0.00644) + 8.72**2 * DotProduct(sigma_0=0.0377) + 1.28**2 * Matern(length_scale=0.0688, nu=1.5)
+log_marginal_likelihood: -80.07324458836766
+```
+
+And the parity plot for train and test set is shown below:
+
+![parity train](xmat_pnnl_model/Model_C/train_parity_plot.png)
+![parity test](xmat_pnnl_model/Model_C/test_parity_plot.png)
+
+Now, we want to know the importance of different features on the prediction. In other words, we want to know which features are essential for the prediction. To quantify the importance of different features, I used shapley value:
+
+```python
+import numpy as np
+from itertools import combinations
+from xmat_pnnl_code import ShapleyFeatures
+import pandas as pd
+
+data = np.load('gp_run.npy', allow_pickle=True)[()]
+
+df = pd.DataFrame(data['X'], columns=data['features'])
+df['C'] = data['y']
+
+shapley_information = ShapleyFeatures(df=df,
+        target='C', features=data['features']).get_phi()
+
+np.save('shpaley_information.npy', shapley_information)
+```
+
+Running this code produces the following summary:
+
+```shell
+Feature                                      Phi       Phi%
+Weighted_AN                                0.196432  19.643942
+Weighted_atomic_weight                     0.225525  22.553312
+Weighted_boiling_point                     0.191836  19.184259
+Weighted_dipole_polarizability            -0.252747 -25.275671
+Weighted_evaporation_heat                  0.216368  21.637592
+Weighted_heat_of_formation                 0.211639  21.164692
+Weighted_melting_point                     0.210911  21.091875
+```
+
+Note, dipole polarizability is actually detrimental to the performance of our model. If we remove it from our model, we see slight improvements (shown below):
+
+```shell
+RMSE_test: 1.0359576912712436
+RMSE_train: 0.014247493216071843
+MAE_test: 0.658920857679828
+MAE_train: 0.007203060215199375
+r2_score_test: 0.8236799814289746
+r2_score_train: 0.9999666501025785
+final_kernel: 5.99**2 * RBF(length_scale=1.57) + WhiteKernel(noise_level=0.00605) + 0.0061**2 * DotProduct(sigma_0=5.25e+03) + 1.31**2 * Matern(length_scale=0.0444, nu=1.5)
+log_marginal_likelihood: -78.53469186266094
+```
+
+And the parity plot looks like:
+
+![parity train](xmat_pnnl_model/Model_C/train_parity_plot_remove_dipole.png)
+![parity test](xmat_pnnl_model/Model_C/test_parity_plot_remove_dipole.png)
+
+Now, we are pretty close to having our simple model finalized. I'll do an overall analysis of the simple model soon.
+
