@@ -5,8 +5,8 @@ In this repo, we will develop machine learning models to predict the lifetime of
 
 ## Focus areas:
 
-1. Hyperparameter optimization (grid search, random search, Bayesian, MCC)
-2. Getting posterior distribution using MCMC
+1. Build a simple physics based model to preserve some form of interpretability
+2. Build a data driven machine learning model to get the residual of the physics based model
 
 
 ## TODO list:
