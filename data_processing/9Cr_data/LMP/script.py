@@ -27,6 +27,7 @@ data = data[keep_column]
 C = 25
 data['LMP'] = 1e-3 * (data['CT_Temp']) * (np.log(data['CT_RT']) + C)
 score_lib = {}
+model_lib = {}
 
 for alloy_id in ID:
     df = data[data['ID'] == alloy_id]
@@ -39,8 +40,11 @@ for alloy_id in ID:
     score_lib[alloy_id] = poly.score
     poly.plot_model().savefig('poly_fit_curves/{}.png'.format(alloy_id))
     plt.clf()
+    model_lib[alloy_id] = {'coef': poly.model.coef_, 
+            'intercept': poly.model.intercept_}
     
     np.save('poly_score.npy', score_lib)
+    np.save('model_params.npy', model_lib)
 
     '''
     # Run shapley on the data
