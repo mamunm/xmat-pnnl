@@ -414,8 +414,8 @@ log_marginal_likelihood: -80.07324458836766
 
 And the parity plot for train and test set is shown below:
 
-![parity train](xmat_pnnl_model/Model_C/train_parity_plot.png)
-![parity test](xmat_pnnl_model/Model_C/test_parity_plot.png)
+![parity train](xmat_pnnl_model/9Chrome_Data/Model_C/train_parity_plot.png)
+![parity test](xmat_pnnl_model/9Chrome_Data/Model_C/test_parity_plot.png)
 
 Now, we want to know the importance of different features on the prediction. In other words, we want to know which features are essential for the prediction. To quantify the importance of different features, I used shapley value:
 
@@ -464,8 +464,8 @@ log_marginal_likelihood: -78.53469186266094
 
 And the parity plot looks like:
 
-![parity train](xmat_pnnl_model/Model_C/train_parity_plot_remove_dipole.png)
-![parity test](xmat_pnnl_model/Model_C/test_parity_plot_remove_dipole.png)
+![parity train](xmat_pnnl_model/9Chrome_Data/Model_C/train_parity_plot_remove_dipole.png)
+![parity test](xmat_pnnl_model/9Chrome_Data/Model_C/test_parity_plot_remove_dipole.png)
 
 Now, we are pretty close to having our simple model finalized. I'll do an overall analysis of the simple model soon.
 
