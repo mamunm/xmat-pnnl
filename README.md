@@ -304,12 +304,12 @@ If for a specific alloy system, we have C available (such as for all the above a
 At first let's look at the scatter plot of different features:
 
 ![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_AN.png)
-![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_atomic_weight.png)
-![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_boiling_point.png)
-![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_dipole_polarizability.png)
-![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_evaporation_heat.png)
-![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_heat_of_formation.png)
-![Weighted Atomic Number](xmat_pnnl_model/Model_C/scatter_plot/Weighted_melting_point.png)
+![Weighted Atomic Number](xmat_pnnl_model/9Chrome_Data/Model_C/scatter_plot/Weighted_atomic_weight.png)
+![Weighted Atomic Number](xmat_pnnl_model/9Chrome_Data/Model_C/scatter_plot/Weighted_boiling_point.png)
+![Weighted Atomic Number](xmat_pnnl_model/9Chrome_Data/Model_C/scatter_plot/Weighted_dipole_polarizability.png)
+![Weighted Atomic Number](xmat_pnnl_model/9Chrome_Data/Model_C/scatter_plot/Weighted_evaporation_heat.png)
+![Weighted Atomic Number](xmat_pnnl_model/9Chrome_Data/Model_C/scatter_plot/Weighted_heat_of_formation.png)
+![Weighted Atomic Number](xmat_pnnl_model/9Chrome_Data/Model_C/scatter_plot/Weighted_melting_point.png)
 
 Now, let's run our GP regressor in this data:
 
