@@ -1,10 +1,11 @@
 import numpy as np
 from sklearn.metrics import (mean_absolute_error, 
-        mean_squared_error, r2_score)
+        mean_squared_error)
+from scipy.stats import linregress
 from importlib import import_module
 import matplotlib.pyplot as plt
 
-class SKGP():
+class SKGP:
     '''An object to oversee a gp run and store all the information pertinent
     to that run as a self contained source.'''
 
@@ -44,8 +45,10 @@ class SKGP():
             else:
                  estimator = estimator(**self.estimator_param)
         
+        print('Fitting the master model. Hang tight!')
         self.model = estimator.fit(self.X, self.y)
         #Model Validation
+        print('Initializing validation.')
         if self.validation == 'leave_one_out':
             val = getattr(import_module('sklearn.model_selection'), 
                     'LeaveOneOut')()
@@ -59,7 +62,8 @@ class SKGP():
         y_true_train = []
         y_pred_train = []
         y_pred_train_unc = []
-        for tr_id, ts_id in val.split(self.y):
+        for n, (tr_id, ts_id) in enumerate(val.split(self.y)):
+            print('Running validation model no. {}'.format(n+1))
             XTR, XTS, YTR = self.X[tr_id], self.X[ts_id], self.y[tr_id]
             temp_model = estimator.fit(XTR, YTR)
             y_true_test.extend(self.y[ts_id])
@@ -84,8 +88,8 @@ class SKGP():
             y_pred_train))
         self.MAE_test = mean_absolute_error(y_true_test, y_pred_test)
         self.MAE_train = mean_absolute_error(y_true_train, y_pred_train)
-        self.r2_score_test = r2_score(y_true_test, y_pred_test)
-        self.r2_score_train = r2_score(y_true_train, y_pred_train)
+        self.r2_score_test = linregress(y_true_test, y_pred_test)[2]**2
+        self.r2_score_train = linregress(y_true_train, y_pred_train)[2]**2
         self.final_kernel = estimator.kernel_
         self.log_marginal_likelihood = estimator.log_marginal_likelihood()
 

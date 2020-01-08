@@ -8,14 +8,18 @@ class ConstantMatcher:
 
     def __init__(self, 
                  df=None, 
-                 target=None, 
+                 stress=None,
+                 temp=None,
+                 RT=None,
                  groupby=None,
                  ID_list=None,
                  degree=2,
                  logify_y=False):
 
         self.df = df
-        self.target = target
+        self.stress = stress
+        self.temp = temp
+        self.RT = RT
         self.groupby = groupby
         self.ID_list = ID_list
         self.degree = degree
@@ -27,10 +31,10 @@ class ConstantMatcher:
             for n, (k, g) in enumerate(self.df.groupby(self.groupby)):
                 if n == 0:
                     self.C_dict[k] = 25
-                    g['LMP'] = 1e-3 * (g['CT_Temp']) * (
-                            np.log(g['CT_RT']) + 25)
-                    poly = PolyFit(df=g[['LMP', 'CT_CS']], 
-                            target='CT_CS', 
+                    g['LMP'] = 1e-3 * (g[self.temp]) * (
+                            np.log(g[self.RT]) + 25)
+                    poly = PolyFit(df=g[['LMP', self.stress]], 
+                            target=self.stress, 
                             degree=self.degree,
                             logify_y=self.logify_y)
                     poly.fit()
@@ -42,9 +46,9 @@ class ConstantMatcher:
             for n, alloy_id in enumerate(self.ID_list):
                 if n == 0:
                     g = self.df[self.df['ID'] == alloy_id]
-                    g['LMP'] = 1e-3 * (g['CT_Temp']) * (
-                            np.log(g['CT_RT']) + 25)
-                    poly = PolyFit(df=g[['LMP', 'CT_CS']], 
+                    g['LMP'] = 1e-3 * (g[self.temp]) * (
+                            np.log(g[self.RT]) + 25)
+                    poly = PolyFit(df=g[['LMP', self.stress]], 
                             target='CT_CS', 
                             degree=self.degree,
                             logify_y=self.logify_y)
@@ -66,11 +70,11 @@ class ConstantMatcher:
     def compute_score(self, C, *args):
         df = args[0]
         model = args[1]
-        df['LMP'] = 1e-3 * (df['CT_Temp']) * (np.log(df['CT_RT']) + C)
+        df['LMP'] = 1e-3 * (df[self.temp]) * (np.log(df[self.RT]) + C)
         if not self.degree == 1:
             X = PolynomialFeatures(degree=self.degree).fit_transform(
                     df[['LMP']].to_numpy())
         else:
             X = df[['LMP']].to_numpy()
-        return -model.score(X, np.log(df['CT_CS']))
+        return -model.score(X, np.log(df[self.stress]))
 

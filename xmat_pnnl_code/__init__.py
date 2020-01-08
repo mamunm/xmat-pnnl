@@ -6,6 +6,9 @@ from .linear_model_zoo import LinearModelZoo
 from .sklearn_gp_wrapper import SKGP
 from .data_processing import ProcessData
 from .shapley_features import ShapleyFeatures
+from .sklearn_regression_wrapper import SKREG
+from .sklearn_gridserach_wrapper import SKGridReg
+from .lightgbm_wrapper import LGBM
 
 __all__ = ['load_data', 
            'PolyFit', 
@@ -14,5 +17,8 @@ __all__ = ['load_data',
            'LinearModelZoo',
            'SKGP',
            'ProcessData',
-           'ShapleyFeatures']
+           'ShapleyFeatures',
+           'SKREG',
+           'SKGridReg',
+           'LGBM']
 __version__ = '0.1'
