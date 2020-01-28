@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.preprocessing import Imputer
+from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 import sklearn.preprocessing as skpre
@@ -58,7 +58,7 @@ class ProcessData():
         """Uses sklearn Imputer to impute null values with mean,
         median or most_frequent depending on the user input"""
 
-        imp = Imputer(strategy=strategy)
+        imp = SimpleImputer(strategy=strategy)
         self.X = imp.fit_transform(self.X)
 
     def scale_data(self, strategy='MinMaxScaler'):

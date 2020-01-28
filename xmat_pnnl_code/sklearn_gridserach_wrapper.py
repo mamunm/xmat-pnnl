@@ -31,6 +31,9 @@ class SKGridReg:
         if self.estimator == 'MLP':
             est = import_module('sklearn.neural_network')
             estimator = getattr(est, 'MLPRegressor')()
+        if self.estimator == 'RF':
+            est = import_module('sklearn.ensemble')
+            estimator = getattr(est, 'RandomForestRegressor')()
 
         if self.scoring == 'r2':
             self.scoring = scoring_func

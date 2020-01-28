@@ -8,7 +8,7 @@ from .data_processing import ProcessData
 from .shapley_features import ShapleyFeatures
 from .sklearn_regression_wrapper import SKREG
 from .sklearn_gridserach_wrapper import SKGridReg
-from .lightgbm_wrapper import LGBM
+from .gbm_wrapper import GBM
 
 __all__ = ['load_data', 
            'PolyFit', 
@@ -20,5 +20,5 @@ __all__ = ['load_data',
            'ShapleyFeatures',
            'SKREG',
            'SKGridReg',
-           'LGBM']
+           'GBM']
 __version__ = '0.1'

@@ -27,6 +27,12 @@ class SKREG:
         if self.estimator == 'MLP':
             est = import_module('sklearn.neural_network')
             estimator = getattr(est, 'MLPRegressor')
+        if self.estimator == 'LR':
+            est = import_module('sklearn.linear_model')
+            estimator = getattr(est, 'LinearRegression')
+        if self.estimator == 'RF':
+            est = import_module('sklearn.ensemble')
+            estimator = getattr(est, 'RandomForestRegressor')
 
         if not self.estimator_param:
             estimator = estimator()
