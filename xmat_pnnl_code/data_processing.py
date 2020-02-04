@@ -14,15 +14,19 @@ class ProcessData():
     def __init__(self,
                  X = None,
                  y = None,
+                 features=None,
                  metadata=None):
         self.X = X
         self.y = y
+        self.features = features
         self.metadata=metadata
 
     def get_data(self):
         """Returns the data at any point it was called"""
-
-        return self.X, self.y, self.metadata
+        return {'X': self.X, 
+                'y': self.y, 
+                'features': self.features, 
+                'metadata': self.metadata}
 
     def remove_instance(self, null_count=0.5):
         """function to remove any data instance with more than
@@ -32,7 +36,8 @@ class ProcessData():
                 if np.isnan(XX).mean() < null_count]
         self.X = self.X[mask]
         self.y = self.y[mask]
-        #self.metadata = self.metadata[mask]
+        if self.metadata is not None:
+            self.metadata = [self.metadata[i] for i in mask]
 
     def remove_null_features(self, null_count=0.5):
         """function to remove any feature with more than
@@ -42,9 +47,10 @@ class ProcessData():
                 if np.isnan(self.X[:, i]).mean() < null_count]
 
         self.X = self.X[:, mask]
-        self.metadata = [self.metadata[i] for i in mask]
+        if self.features is not None:
+            self.features = [self.features[i] for i in mask]
 
-    def remove_low_variation(self, var_threshold=0.05):
+    def remove_low_variation(self, var_threshold=0):
         """function to remove features with little information as
         characterize by their variance"""
 
@@ -52,7 +58,8 @@ class ProcessData():
                 if self.X[:, i].var() > var_threshold]
 
         self.X = self.X[:, mask]
-        self.metadata = [self.metadata[i] for i in mask]
+        if self.features is not None:
+            self.features = [self.features[i] for i in mask]
 
     def impute_data(self, strategy='mean'):
         """Uses sklearn Imputer to impute null values with mean,

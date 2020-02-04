@@ -18,6 +18,7 @@ class GBM:
             feature_names=None,
             parameters=None,
             cv=5,
+            test_size=0.1,
             grid_search=False,
             grid_search_scoring='neg_mean_squared_error',
             param_grid=None,
@@ -29,6 +30,7 @@ class GBM:
         self.feature_names = feature_names
         self.parameters = parameters
         self.cv = cv
+        self.test_size = test_size
         self.grid_search = grid_search
         self.grid_search_scoring = grid_search_scoring
         self.param_grid = param_grid
@@ -37,8 +39,9 @@ class GBM:
         if self.grid_search:
             self.run_grid_search()
             self.parameters = self.best_params
-
-        Xtr, Xts, ytr, yts = train_test_split(self.X, self.y, test_size=0.1)
+            
+        Xtr, Xts, ytr, yts = train_test_split(self.X, self.y, 
+                test_size=self.test_size)
 
         if self.cv == 'loo':
             cv = LeaveOneOut()
@@ -57,13 +60,22 @@ class GBM:
         for n, (tr_id, ts_id) in enumerate(cv.split(ytr)):
             print('Running Validation {} of {}'.format(n, self.cv))
             self.model = est[self.package](**self.parameters)
-            self.model.fit(Xtr[tr_id], ytr[tr_id],
+            if not self.package == 'catboost':
+                self.model.fit(Xtr[tr_id], ytr[tr_id],
                     eval_set=[(Xtr[ts_id], ytr[ts_id])],
                     eval_metric='rmse', early_stopping_rounds=20)
-            y_cv_tr_pred = self.model.predict(Xtr[tr_id],
+            else:
+                self.model.fit(Xtr[tr_id], ytr[tr_id],
+                    eval_set=[(Xtr[ts_id], ytr[ts_id])],
+                    early_stopping_rounds=20)
+            if self.package == 'lightgbm':
+                y_cv_tr_pred = self.model.predict(Xtr[tr_id],
                     num_iteration=self.model.best_iteration_)
-            y_cv_ts_pred = self.model.predict(Xtr[ts_id], 
+                y_cv_ts_pred = self.model.predict(Xtr[ts_id], 
                     num_iteration=self.model.best_iteration_)
+            else:
+                y_cv_tr_pred = self.model.predict(Xtr[tr_id])
+                y_cv_ts_pred = self.model.predict(Xtr[ts_id])
             self.rmse_cv_train.append(np.sqrt(mean_squared_error(
                 y_cv_tr_pred, ytr[tr_id])))
             self.rmse_cv_test.append(np.sqrt(mean_squared_error(
@@ -82,9 +94,16 @@ class GBM:
         self.r2_std_test = np.std(self.r2_cv_test)
 
         self.model = est[self.package](**self.parameters)
-        self.model.fit(Xtr, ytr, eval_set=[(Xts, yts)], 
+        if self.package == 'lightgbm':
+            self.model.fit(Xtr, ytr, eval_set=[(Xts, yts)], 
                 eval_metric='rmse', early_stopping_rounds=20,
                 feature_name=self.feature_names)
+        elif self.package == 'xgboost':
+            self.model.fit(Xtr, ytr, eval_set=[(Xts, yts)], 
+                eval_metric='rmse', early_stopping_rounds=20)
+        else:
+            self.model.fit(Xtr, ytr, eval_set=[(Xts, yts)], 
+                early_stopping_rounds=20)
 
     def run_grid_search(self):
         estimator = est[self.package]()
