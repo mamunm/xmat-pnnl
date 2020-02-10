@@ -6,6 +6,7 @@
 #DATE CREATED: 12-19-2019
 
 import numpy as np
+import sys
 import pandas as pd
 from sklearn.metrics import r2_score, mean_absolute_error
 from scipy.stats import linregress
@@ -31,6 +32,11 @@ ID = ['9Cr-{}'.format(str(i).zfill(3)) for i in ID]
 path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data'
 df = pd.read_csv(path + '/Cleaned_data.csv')
 df = df[df.ID.isin(ID)]
+ele = ['Fe', 'C', 'Cr', 'Mn', 'Si', 'Ni', 'Co', 'Mo', 'W', 'Nb', 'Al',
+       'P', 'Cu', 'Ti', 'Ta', 'Hf', 'Re', 'V', 'B', 'N', 'O', 'S', 'Zr']
+df[ele] = df[ele].fillna(0)
+df = df.dropna(subset=['CT_RT', 'CT_CS', 'CT_EL', 'CT_RA', 'CT_Temp',
+    'Normal', 'Temper1', 'AGS No.', 'CT_MCR'])
 df['log_CT_CS'] = np.log(df['CT_CS'])
 
 df['LMP_Model'] = df.apply(lambda x:
@@ -40,11 +46,12 @@ features = [i for i in df.columns if i not in ['CT_RT', 'CT_Temp',
     'ID', 'CT_CS', 'LMP_Model']]
 X = df[features].to_numpy(np.float32)
 y = df['LMP_Model'].to_numpy(np.float32)
+y2 = df[['ID', 'CT_RT', 'CT_Temp', 'CT_CS']].values.tolist()
 
-pd = ProcessData(X=X, y=y, metadata=features)
-pd.clean_data()
-X, y, metadata = pd.get_data()
-del pd
+pdata = ProcessData(X=X, y=y, y2=y2, features=features)
+pdata.clean_data()
+data = pdata.get_data()
+del pdata
 
 '''
 parameters_grid = {'boosting_type': ['gbdt', 'goss'],
@@ -107,22 +114,32 @@ parameters = {'boosting_type': 'dart',
               'num_boost_round': 100,
               'tree_learner': 'feature'}
 
+CT_RT = np.array([i[1] for i in data['y2']])
+CT_Temp = np.array([i[2] for i in data['y2']])
+ID = [i[0] for i in data['y2']]
+C = np.array([25 for i in ID])
+
 lgb = GBM(package='lightgbm',
-          X=X,
-          y=y,
-          feature_names=metadata,
-          cv=5,
+          X=data['X'],
+          y=data['y'],
+          feature_names=data['features'],
+          cv=10,
           grid_search=False,
           eval_metric='rmse',
-          parameters=parameters)
+          parameters=parameters,
+          CT_Temp=CT_Temp,
+          CT_RT=CT_RT,
+          C=C)
+
 
 lgb.run_model()
 print(lgb.__dict__)
-plot_importance(lgb.model)
+print(data['features'])
+plot_importance(lgb.model[-1])
 plt.show()
 plt.clf()
-plot_metric(lgb.model, metric='rmse')
+plot_metric(lgb.model[-1], metric='rmse')
 plt.show()
 plt.clf()
-plot_tree(lgb.model)
+plot_tree(lgb.model[-1])
 plt.show()

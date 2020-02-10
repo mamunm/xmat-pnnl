@@ -469,3 +469,5 @@ And the parity plot looks like:
 
 Now, we are pretty close to having our simple model finalized. I'll do an overall analysis of the simple model soon.
 
+
+

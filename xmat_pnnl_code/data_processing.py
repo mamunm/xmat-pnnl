@@ -14,10 +14,12 @@ class ProcessData():
     def __init__(self,
                  X = None,
                  y = None,
+                 y2 = None,
                  features=None,
                  metadata=None):
         self.X = X
         self.y = y
+        self.y2 = y2
         self.features = features
         self.metadata=metadata
 
@@ -25,6 +27,7 @@ class ProcessData():
         """Returns the data at any point it was called"""
         return {'X': self.X, 
                 'y': self.y, 
+                'y2': self.y2,
                 'features': self.features, 
                 'metadata': self.metadata}
 
@@ -36,6 +39,8 @@ class ProcessData():
                 if np.isnan(XX).mean() < null_count]
         self.X = self.X[mask]
         self.y = self.y[mask]
+        if self.y2 is not None:
+            self.y2 = [self.y2[i] for i in mask]
         if self.metadata is not None:
             self.metadata = [self.metadata[i] for i in mask]
 
@@ -75,6 +80,7 @@ class ProcessData():
             strategy = getattr(skpre, strategy)
         scale = strategy()
         self.X = scale.fit_transform(self.X)
+        self.scale = scale
 
     def clean_data(self):
         """Performs all the operations available."""
