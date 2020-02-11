@@ -13,9 +13,12 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from xmat_pnnl_code import ProcessData
 from xmat_pnnl_code import GBM
+import shap
+import xmat_pnnl_code as xcode
 
 #Model data
-path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data/LMP'
+base_path = '/'.join(xcode.__path__[0].split('/')[:-1])
+path = base_path + '/data_processing/9Cr_data/LMP'
 model = np.load(path + '/model_params.npy', allow_pickle=True)[()]
 model = model['9Cr-001']
 
@@ -31,7 +34,7 @@ ID = [1, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
       77, 78, 79, 82]
 ID = ['9Cr-{}'.format(str(i).zfill(3)) for i in ID]
 
-path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data'
+path = base_path + '/data_processing/9Cr_data'
 df = pd.read_csv(path + '/Cleaned_data.csv')
 df = df[df.ID.isin(ID)]
 ele = ['Fe', 'C', 'Cr', 'Mn', 'Si', 'Ni', 'Co', 'Mo', 'W', 'Nb', 'Al',
@@ -40,57 +43,21 @@ df[ele] = df[ele].fillna(0)
 df = df.dropna(subset=['CT_RT', 'CT_CS', 'CT_EL', 'CT_RA', 'CT_Temp',
     'Normal', 'Temper1', 'AGS No.', 'CT_MCR'])
 df['log_CT_CS'] = np.log(df['CT_CS'])
+df['log_CT_MCR'] = np.log(df['CT_MCR'])
 
 df['LMP_Model'] = df.apply(lambda x:
         1e-3 * x['CT_Temp'] * (np.log(x['CT_RT']) + C_data[x['ID']]), axis=1)
 
 features = [i for i in df.columns if i not in ['CT_RT', 'CT_Temp', 
-    'ID', 'CT_CS', 'LMP_Model']]
+    'ID', 'CT_CS', 'LMP_Model', 'CT_MCR']]
 X = df[features].to_numpy(np.float32)
 y = df['LMP_Model'].to_numpy(np.float32)
 y2 = df[['ID', 'CT_RT', 'CT_Temp', 'CT_CS']].values.tolist()
-pd = ProcessData(X=X, y=y, y2=y2, features=features)
-pd.clean_data()
-data = pd.get_data()
-del pd
-
-'''
-parameters_grid = {'boosting_type': ['gbdt', 'goss'],
-              'num_leaves': [100, 200],
-              'max_depth': [-1],
-              'learning_rate': [0.01],
-              'n_estimators': [100, 200],
-              'subsample_for_bin': [200000],
-              'objective': [None],
-              'class_weight': [None],
-              'min_split_gain': [0.0],
-              'min_child_weight': [0.001],
-              'min_child_samples': [20],
-              'subsample': [1.0],
-              'subsample_freq': [0],
-              'colsample_bytree': [1.0],
-              'reg_alpha': [0.0],
-              'reg_lambda': [0.0],
-              'random_state': [42],
-              'n_jobs': [-1],
-              'silent': [True],
-              'importance_type' : ['split'],
-              'num_boost_round': [2000],
-              'tree_learner': ['serial', 'feature', 'data', 'voting'],
-              'boost_from_average': [True, False],
-              'alpha': [0.1, 0.5, 0.9, 1.0]}
-              #'bagging_fraction': [0.2]}
-
-lgb = LGBM(X=X,
-           y=y,
-           cv=5,
-           grid_search=True,
-           eval_metric='rmse',
-           param_grid=parameters_grid)
-
-lgb.run_model()
-print(lgb.__dict__)
-'''
+pdata = ProcessData(X=X, y=y, y2=y2, features=features)
+pdata.clean_data()
+data = pdata.get_data()
+scale = pdata.scale
+del pdata
 
 parameters = {'booster': 'gbtree', #gbtree, gblinear, dart
               'eta': 0.3, #learning rate
@@ -107,7 +74,7 @@ C = np.array([C_data[i] for i in ID])
 xgb = GBM(package='xgboost',
           X=data['X'],
           y=data['y'],
-          cv=10,
+          cv=5,
           grid_search=False,
           eval_metric='rmse',
           parameters=parameters,
@@ -117,3 +84,17 @@ xgb = GBM(package='xgboost',
 
 xgb.run_model()
 print(xgb.__dict__)
+xgb.parity_plot(data='train', quantity='LMP').savefig('parity_LMP_train.png')
+xgb.parity_plot(data='test', quantity='LMP').savefig('parity_LMP_test.png')
+xgb.parity_plot(data='train', quantity='CT_RT').savefig('parity_CT_RT_train.png')
+xgb.parity_plot(data='test', quantity='CT_RT').savefig('parity_CT_RT_test.png')
+np.save('xgb_dict.npy', xgb.__dict__)
+plt.clf()
+explainer = shap.TreeExplainer(xgb.model[-1])
+shap_values = explainer.shap_values(data['X'])
+
+XX = scale.inverse_transform(data['X'])
+X = pd.DataFrame(XX, columns=data['features'])
+# summarize the effects of all the features
+shap.summary_plot(shap_values, X, plot_type="bar", show=False)
+plt.savefig('feature_importance.png', dpi=150, bbox_inches='tight')

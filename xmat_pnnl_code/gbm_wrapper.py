@@ -93,45 +93,54 @@ class GBM:
                     eval_set=[(self.X[ts_id], self.y[ts_id])],
                     early_stopping_rounds=20))
             if self.package == 'lightgbm':
-                y_cv_tr_pred = self.model[-1].predict(self.X[tr_id],
+                self.y_cv_tr_pred = self.model[-1].predict(self.X[tr_id],
                     num_iteration=self.model[-1].best_iteration_)
-                y_cv_ts_pred = self.model[-1].predict(self.X[ts_id], 
+                self.y_cv_ts_pred = self.model[-1].predict(self.X[ts_id], 
                     num_iteration=self.model[-1].best_iteration_)
                 if self.CT_RT is not None:
-                    CT_RT_cv_tr_pred = np.exp((
-                        y_cv_tr_pred*1000/self.CT_Temp[tr_id]) - self.C[tr_id])
-                    CT_RT_cv_ts_pred = np.exp((
-                        y_cv_ts_pred*1000/self.CT_Temp[ts_id]) - self.C[ts_id])
+                    self.CT_RT_cv_tr_pred = np.exp((
+                        self.y_cv_tr_pred*1000/self.CT_Temp[tr_id]) 
+                        - self.C[tr_id])
+                    self.CT_RT_cv_ts_pred = np.exp((
+                        self.y_cv_ts_pred*1000/self.CT_Temp[ts_id]) 
+                        - self.C[ts_id])
             else:
-                y_cv_tr_pred = self.model[-1].predict(self.X[tr_id])
-                y_cv_ts_pred = self.model[-1].predict(self.X[ts_id])
+                self.y_cv_tr_pred = self.model[-1].predict(self.X[tr_id])
+                self.y_cv_ts_pred = self.model[-1].predict(self.X[ts_id])
                 if self.CT_RT is not None:
-                    CT_RT_cv_tr_pred = np.exp((
-                        y_cv_tr_pred*1000/self.CT_Temp[tr_id]) - self.C[tr_id])
-                    CT_RT_cv_ts_pred = np.exp((
-                        y_cv_ts_pred*1000/self.CT_Temp[ts_id]) - self.C[ts_id])
+                    self.CT_RT_cv_tr_pred = np.exp((
+                        self.y_cv_tr_pred*1000/self.CT_Temp[tr_id]) 
+                        - self.C[tr_id])
+                    self.CT_RT_cv_ts_pred = np.exp((
+                        self.y_cv_ts_pred*1000/self.CT_Temp[ts_id]) 
+                        - self.C[ts_id])
+            self.y_cv_tr = self.y[tr_id]
+            self.y_cv_ts = self.y[ts_id]
+            if self.CT_RT is not None:
+                self.CT_RT_cv_tr = self.CT_RT[tr_id]
+                self.CT_RT_cv_ts = self.CT_RT[ts_id]
             self.rmse_cv_train.append(np.sqrt(mean_squared_error(
-                y_cv_tr_pred, self.y[tr_id])))
+                self.y_cv_tr_pred, self.y[tr_id])))
             self.rmse_cv_test.append(np.sqrt(mean_squared_error(
-                y_cv_ts_pred, self.y[ts_id])))
-            self.r2_cv_train.append(linregress(y_cv_tr_pred, 
+                self.y_cv_ts_pred, self.y[ts_id])))
+            self.r2_cv_train.append(linregress(self.y_cv_tr_pred, 
                 self.y[tr_id])[2]**2)
-            self.r2_cv_test.append(linregress(y_cv_ts_pred, 
+            self.r2_cv_test.append(linregress(self.y_cv_ts_pred, 
                 self.y[ts_id])[2]**2)
-            self.pr_cv_train.append(pr(y_cv_tr_pred, self.y[tr_id]))
-            self.pr_cv_test.append(pr(y_cv_ts_pred, self.y[ts_id]))
+            self.pr_cv_train.append(pr(self.y_cv_tr_pred, self.y[tr_id]))
+            self.pr_cv_test.append(pr(self.y_cv_ts_pred, self.y[ts_id]))
             if self.CT_RT is not None:
                 self.rmse_CT_RT_cv_train.append(np.sqrt(mean_squared_error(
-                    CT_RT_cv_tr_pred, self.CT_RT[tr_id])))
+                    self.CT_RT_cv_tr_pred, self.CT_RT[tr_id])))
                 self.rmse_CT_RT_cv_test.append(np.sqrt(mean_squared_error(
-                    CT_RT_cv_ts_pred, self.CT_RT[ts_id])))
-                self.r2_CT_RT_cv_train.append(linregress(CT_RT_cv_tr_pred, 
+                    self.CT_RT_cv_ts_pred, self.CT_RT[ts_id])))
+                self.r2_CT_RT_cv_train.append(linregress(self.CT_RT_cv_tr_pred,
                     self.CT_RT[tr_id])[2]**2)
-                self.r2_CT_RT_cv_test.append(linregress(CT_RT_cv_ts_pred, 
+                self.r2_CT_RT_cv_test.append(linregress(self.CT_RT_cv_ts_pred, 
                     self.CT_RT[ts_id])[2]**2)
-                self.pr_CT_RT_cv_train.append(pr(CT_RT_cv_tr_pred, 
+                self.pr_CT_RT_cv_train.append(pr(self.CT_RT_cv_tr_pred, 
                     self.CT_RT[tr_id]))
-                self.pr_CT_RT_cv_test.append(pr(CT_RT_cv_ts_pred, 
+                self.pr_CT_RT_cv_test.append(pr(self.CT_RT_cv_ts_pred, 
                     self.CT_RT[ts_id]))
         
         self.N_dp = len(self.y)
@@ -178,6 +187,42 @@ class GBM:
             self.model.fit(Xtr, ytr, eval_set=[(Xts, yts)], 
                 early_stopping_rounds=20)
         '''
+    
+    def parity_plot(self, data='train', quantity='LMP'):
+        """A utility function to plot the parity between predicted and
+        actual values.
+        Parameters
+        ----------
+        data : train | test
+        """
+        if data not in ['train', 'test']:
+            print('data must be either train or test')
+            return None
+        if data == 'train' and quantity == 'LMP':
+            x = self.y_cv_tr
+            y = self.y_cv_tr_pred
+        if data == 'test' and quantity == 'LMP':
+            x = self.y_cv_ts
+            y = self.y_cv_ts_pred
+        if data == 'train' and quantity == 'CT_RT':
+            x = self.CT_RT_cv_tr
+            y = self.CT_RT_cv_tr_pred
+        if data == 'test' and quantity == 'CT_RT':
+            x = self.CT_RT_cv_ts
+            y = self.CT_RT_cv_ts_pred
+        plt.figure(figsize=(10, 8))
+        plt.title('Parity plot for {}ing data'.format(data))
+        plt.grid(color='b', linestyle='-', linewidth=0.5)
+        plt.xlabel("Actual data")
+        plt.ylabel("Predicted data")
+        plt.scatter(x, y, marker='o', color='g', alpha=0.7,
+                 label="ML predicted data")
+        plt.plot(x, x, '-', color='black',
+                 label="parity line")
+        plt.legend(loc='best')
+
+        return plt
+
 
     def run_grid_search(self):
         est = {'lightgbm': lgb.LGBMRegressor,

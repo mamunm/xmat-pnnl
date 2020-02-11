@@ -16,9 +16,12 @@ from xmat_pnnl_code import ProcessData
 from xmat_pnnl_code import GBM
 from lightgbm import plot_importance, plot_metric, plot_tree
 import matplotlib.pyplot as plt
+import shap 
+import xmat_pnnl_code as xcode
 
 #Model data
-path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data/LMP'
+base_path = '/'.join(xcode.__path__[0].split('/')[:-1])
+path = base_path + '/data_processing/9Cr_data/LMP'
 model = np.load(path + '/model_params.npy', allow_pickle=True)[()]
 model = model['9Cr-001']
 
@@ -29,7 +32,7 @@ ID = [1, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
       77, 78, 79, 82]
 ID = ['9Cr-{}'.format(str(i).zfill(3)) for i in ID]
 
-path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data'
+path = base_path + '/data_processing/9Cr_data'
 df = pd.read_csv(path + '/Cleaned_data.csv')
 df = df[df.ID.isin(ID)]
 ele = ['Fe', 'C', 'Cr', 'Mn', 'Si', 'Ni', 'Co', 'Mo', 'W', 'Nb', 'Al',
@@ -38,12 +41,13 @@ df[ele] = df[ele].fillna(0)
 df = df.dropna(subset=['CT_RT', 'CT_CS', 'CT_EL', 'CT_RA', 'CT_Temp',
     'Normal', 'Temper1', 'AGS No.', 'CT_MCR'])
 df['log_CT_CS'] = np.log(df['CT_CS'])
+df['log_CT_MCR'] = np.log(df['CT_MCR'])
 
 df['LMP_Model'] = df.apply(lambda x:
         1e-3 * x['CT_Temp'] * (np.log(x['CT_RT']) + 25), axis=1)
 
 features = [i for i in df.columns if i not in ['CT_RT', 'CT_Temp', 
-    'ID', 'CT_CS', 'LMP_Model']]
+    'ID', 'CT_CS', 'LMP_Model', 'CT_MCR']]
 X = df[features].to_numpy(np.float32)
 y = df['LMP_Model'].to_numpy(np.float32)
 y2 = df[['ID', 'CT_RT', 'CT_Temp', 'CT_CS']].values.tolist()
@@ -51,6 +55,7 @@ y2 = df[['ID', 'CT_RT', 'CT_Temp', 'CT_CS']].values.tolist()
 pdata = ProcessData(X=X, y=y, y2=y2, features=features)
 pdata.clean_data()
 data = pdata.get_data()
+scale = pdata.scale
 del pdata
 
 '''
@@ -94,18 +99,19 @@ parameters = {'booster': 'gbtree', #gbtree, gblinear, dart
               'eta': 0.3, #learning rate
               'gamma': 0, #min split loss
               'max_depth': 20,
-              'tree_method': 'auto'}
+              'tree_method': 'auto',
+              'num_boost_round': 5000}
 
 CT_RT = np.array([i[1] for i in data['y2']])
 CT_Temp = np.array([i[2] for i in data['y2']])
 ID = [i[0] for i in data['y2']]
 C = np.array([25 for i in ID])
 
-xgb = GBM(package='xgboost',
+xgboost = GBM(package='xgboost',
           X=data['X'],
           y=data['y'],
           feature_names=data['features'],
-          cv=10,
+          cv=5,
           grid_search=False,
           eval_metric='rmse',
           parameters=parameters,
@@ -114,16 +120,19 @@ xgb = GBM(package='xgboost',
           C=C)
 
 
-xgb.run_model()
-print(xgb.__dict__)
-'''
-print(data['features'])
-plot_importance(lgb.model[-1])
-plt.show()
+xgboost.run_model()
+print(xgboost.__dict__)
+xgboost.parity_plot(data='train', quantity='LMP').savefig('parity_LMP_train.png')
+xgboost.parity_plot(data='test', quantity='LMP').savefig('parity_LMP_test.png')
+xgboost.parity_plot(data='train', quantity='CT_RT').savefig('parity_CT_RT_train.png')
+xgboost.parity_plot(data='test', quantity='CT_RT').savefig('parity_CT_RT_test.png')
+np.save('xgb_dict.npy', xgboost.__dict__)
 plt.clf()
-plot_metric(lgb.model[-1], metric='rmse')
-plt.show()
-plt.clf()
-plot_tree(lgb.model[-1])
-plt.show()
-'''
+explainer = shap.TreeExplainer(xgboost.model[-1])
+shap_values = explainer.shap_values(data['X'])
+
+XX = scale.inverse_transform(data['X'])
+X = pd.DataFrame(XX, columns=data['features'])
+# summarize the effects of all the features
+shap.summary_plot(shap_values, X, plot_type="bar", show=False)
+plt.savefig('feature_importance.png', dpi=150, bbox_inches='tight')

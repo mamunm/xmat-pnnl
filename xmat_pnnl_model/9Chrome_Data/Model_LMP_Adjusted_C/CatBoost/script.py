@@ -14,6 +14,7 @@ from sklearn.linear_model import LinearRegression
 from xmat_pnnl_code import ProcessData
 from xmat_pnnl_code import GBM
 import xmat_pnnl_code as xcode
+import shap
 
 #Model data
 base_path = '/'.join(xcode.__path__[0].split('/')[:-1])
@@ -44,18 +45,20 @@ df = df.dropna(subset=['CT_RT', 'CT_CS', 'CT_EL', 'CT_RA', 'CT_Temp',
     'Normal', 'Temper1', 'AGS No.', 'CT_MCR'])
 
 df['log_CT_CS'] = np.log(df['CT_CS'])
+df['log_CT_MCR'] = np.log(df['CT_MCR'])
 
 df['LMP_Model'] = df.apply(lambda x:
         1e-3 * x['CT_Temp'] * (np.log(x['CT_RT']) + C_data[x['ID']]), axis=1)
 
 features = [i for i in df.columns if i not in ['CT_RT', 'CT_Temp', 
-    'ID', 'CT_CS', 'LMP_Model']]
+    'ID', 'CT_CS', 'LMP_Model', 'CT_MCR']]
 X = df[features].to_numpy(np.float32)
 y = df['LMP_Model'].to_numpy(np.float32)
 y2 = df[['ID', 'CT_RT', 'CT_Temp', 'CT_CS']].values.tolist()
 pdata = ProcessData(X=X, y=y, y2=y2, features=features)
 pdata.clean_data()
 data = pdata.get_data()
+scale=pdata.scale
 del pdata
 
 '''
@@ -85,15 +88,15 @@ parameters_grid = {'boosting_type': ['gbdt', 'goss'],
               'alpha': [0.1, 0.5, 0.9, 1.0]}
               #'bagging_fraction': [0.2]}
 
-lgb = LGBM(X=X,
+catboost = LGBM(X=X,
            y=y,
            cv=5,
            grid_search=True,
            eval_metric='rmse',
            param_grid=parameters_grid)
 
-lgb.run_model()
-print(lgb.__dict__)
+catboost.run_model()
+print(catboost.__dict__)
 '''
 
 parameters = {'iterations': 10000,
@@ -152,7 +155,7 @@ CT_CS = np.array([i[3] for i in data['y2']])
 ID = [i[0] for i in data['y2']]
 C = np.array([C_data[i] for i in ID])
 
-xgb = GBM(package='catboost',
+catboost = GBM(package='catboost',
           X=data['X'],
           y=data['y'],
           cv=5,
@@ -165,6 +168,20 @@ xgb = GBM(package='catboost',
           CT_RT=CT_RT,
           C=C)
 
-xgb.run_model()
-print(xgb.__dict__)
+catboost.run_model()
+print(catboost.__dict__)
+catboost.parity_plot(data='train', quantity='LMP').savefig('parity_LMP_train.png')
+catboost.parity_plot(data='test', quantity='LMP').savefig('parity_LMP_test.png')
+catboost.parity_plot(data='train', quantity='CT_RT').savefig('parity_CT_RT_train.png')
+catboost.parity_plot(data='test', quantity='CT_RT').savefig('parity_CT_RT_test.png')
+np.save('catboost_dict.npy', catboost.__dict__)
+plt.clf()
+explainer = shap.TreeExplainer(catboost.model[-1])
+shap_values = explainer.shap_values(data['X'])
+
+XX = scale.inverse_transform(data['X'])
+X = pd.DataFrame(XX, columns=data['features'])
+# summarize the effects of all the features
+shap.summary_plot(shap_values, X, plot_type="bar", show=False)
+plt.savefig('feature_importance.png', dpi=150, bbox_inches='tight')
 

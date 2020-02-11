@@ -27,6 +27,7 @@ from lightgbm import plot_importance, plot_metric, plot_tree
 import matplotlib.pyplot as plt
 import json
 import xmat_pnnl_code as xcode
+import shap
 
 #Model data
 base_path = '/'.join(xcode.__path__[0].split('/')[:-1])
@@ -50,14 +51,17 @@ df[ele] = df[ele].fillna(0)
 df = df.dropna(subset=['CT_RT', 'CT_CS', 'CT_EL', 'CT_RA', 'CT_Temp',
     'Normal', 'Temper1', 'AGS No.', 'CT_MCR'])
 df['log_CT_CS'] = np.log(df['CT_CS'])
+df['log_CT_MCR'] = np.log(df['CT_MCR'])
 
-features = [i for i in df.columns if i not in ['CT_RT', 'CT_CS', 'ID']]
+features = [i for i in df.columns if i not in ['CT_RT', 'CT_CS', 
+    'CT_MCR', 'ID']]
 X = df[features].to_numpy(np.float32)
 y = df['CT_RT'].to_numpy(np.float32)
 
 pdata = ProcessData(X=X, y=y, features=features)
 pdata.clean_data()
 data = pdata.get_data()
+scale = pdata.scale
 del pdata
 
 '''
@@ -151,7 +155,7 @@ catboost = GBM(package='catboost',
           X=data['X'],
           y=data['y'],
           feature_names=data['features'],
-          cv=10,
+          cv=5,
           grid_search=False,
           eval_metric='rmse',
           parameters=parameters)
@@ -160,14 +164,14 @@ catboost = GBM(package='catboost',
 catboost.run_model()
 print(catboost.__dict__)
 np.save('catboost_res.npy', catboost.__dict__)
-'''
-print(data['features'])
-plot_importance(lgb.model)
-plt.show()
+catboost.parity_plot(data='train', quantity='LMP').savefig('parity_LMP_train.png')
+catboost.parity_plot(data='test', quantity='LMP').savefig('parity_LMP_test.png')
 plt.clf()
-plot_metric(lgb.model, metric='rmse')
-plt.show()
-plt.clf()
-plot_tree(lgb.model)
-plt.show()
-'''
+explainer = shap.TreeExplainer(catboost.model[-1])
+shap_values = explainer.shap_values(data['X'])
+
+XX = scale.inverse_transform(data['X'])
+X = pd.DataFrame(XX, columns=data['features'])
+# summarize the effects of all the features
+shap.summary_plot(shap_values, X, plot_type="bar", show=False)
+plt.savefig('feature_importance.png', dpi=150, bbox_inches='tight')
