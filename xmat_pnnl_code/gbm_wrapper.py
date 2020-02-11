@@ -8,6 +8,7 @@ from sklearn.model_selection import LeaveOneOut, KFold
 from scipy.stats import linregress
 from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
+from scipy.stats import pearsonr as pr
 
 class GBM:
 
@@ -60,10 +61,15 @@ class GBM:
         self.r2_cv_train = []
         self.rmse_cv_test = []
         self.r2_cv_test = []
-        self.rmse_CT_RT_cv_train = []
-        self.r2_CT_RT_cv_train = []
-        self.rmse_CT_RT_cv_test = []
-        self.r2_CT_RT_cv_test = []
+        self.pr_cv_train = []
+        self.pr_cv_test = []
+        if self.CT_RT is not None:
+            self.rmse_CT_RT_cv_train = []
+            self.r2_CT_RT_cv_train = []
+            self.rmse_CT_RT_cv_test = []
+            self.r2_CT_RT_cv_test = []
+            self.pr_CT_RT_cv_train = []
+            self.pr_CT_RT_cv_test = []
         
         est = {'lightgbm': lgb.LGBMRegressor,
                'catboost': catboost.CatBoostRegressor,
@@ -112,6 +118,8 @@ class GBM:
                 self.y[tr_id])[2]**2)
             self.r2_cv_test.append(linregress(y_cv_ts_pred, 
                 self.y[ts_id])[2]**2)
+            self.pr_cv_train.append(pr(y_cv_tr_pred, self.y[tr_id]))
+            self.pr_cv_test.append(pr(y_cv_ts_pred, self.y[ts_id]))
             if self.CT_RT is not None:
                 self.rmse_CT_RT_cv_train.append(np.sqrt(mean_squared_error(
                     CT_RT_cv_tr_pred, self.CT_RT[tr_id])))
@@ -121,6 +129,10 @@ class GBM:
                     self.CT_RT[tr_id])[2]**2)
                 self.r2_CT_RT_cv_test.append(linregress(CT_RT_cv_ts_pred, 
                     self.CT_RT[ts_id])[2]**2)
+                self.pr_CT_RT_cv_train.append(pr(CT_RT_cv_tr_pred, 
+                    self.CT_RT[tr_id]))
+                self.pr_CT_RT_cv_test.append(pr(CT_RT_cv_ts_pred, 
+                    self.CT_RT[ts_id]))
         
         self.N_dp = len(self.y)
         self.rmse_mean_train = np.mean(self.rmse_cv_train)
@@ -131,6 +143,10 @@ class GBM:
         self.r2_std_train = np.std(self.r2_cv_train)
         self.r2_mean_test = np.mean(self.r2_cv_test)
         self.r2_std_test = np.std(self.r2_cv_test)
+        self.pr_mean_train = np.mean([i[0] for i in self.pr_cv_train])
+        self.pr_std_train = np.std([i[0] for i in self.pr_cv_train])
+        self.pr_mean_test = np.mean([i[0] for i in self.pr_cv_test])
+        self.pr_std_test = np.std([i[0] for i in self.pr_cv_test])
         if self.CT_RT is not None:
             self.rmse_CT_RT_mean_train = np.mean(self.rmse_CT_RT_cv_train)
             self.rmse_CT_RT_std_train = np.std(self.rmse_CT_RT_cv_train)
@@ -140,6 +156,14 @@ class GBM:
             self.r2_CT_RT_std_train = np.std(self.r2_CT_RT_cv_train)
             self.r2_CT_RT_mean_test = np.mean(self.r2_CT_RT_cv_test)
             self.r2_CT_RT_std_test = np.std(self.r2_CT_RT_cv_test)
+            self.pr_CT_RT_mean_train = np.mean([i[0] 
+                for i in self.pr_CT_RT_cv_train])
+            self.pr_CT_RT_std_train = np.std([i[0] 
+                for i in self.pr_CT_RT_cv_train])
+            self.pr_CT_RT_mean_test = np.mean([i[0] 
+                for i in self.pr_CT_RT_cv_test])
+            self.pr_CT_RT_std_test = np.std([i[0] 
+                for i in self.pr_CT_RT_cv_test])
 
         '''
         self.model = est[self.package](**self.parameters)

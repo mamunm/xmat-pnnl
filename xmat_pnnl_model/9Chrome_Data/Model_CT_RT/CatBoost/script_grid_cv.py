@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 # -*-coding: utf-8 -*-
 
+#!/bin/bash
+#SBATCH -N 2
+#SBATCH -C knl
+#SBATCH -q regular
+#SBATCH -J grid_search
+#SBATCH --mail-user=mdosman.mamun@pnnl.gov
+#SBATCH --mail-type=ALL
+#SBATCH -t 48:00:00
+
 #SCRIPT: script.py
 #AUTHOR: Osman Mamun
 #DATE CREATED: 12-19-2019
@@ -17,9 +26,11 @@ from xmat_pnnl_code import GBM
 from lightgbm import plot_importance, plot_metric, plot_tree
 import matplotlib.pyplot as plt
 import json
+import xmat_pnnl_code as xcode
 
 #Model data
-path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data/LMP'
+base_path = '/'.join(xcode.__path__[0].split('/')[:-1])
+path = base_path + '/data_processing/9Cr_data/LMP'
 model = np.load(path + '/model_params.npy', allow_pickle=True)[()]
 model = model['9Cr-001']
 
@@ -30,7 +41,7 @@ ID = [1, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
       77, 78, 79, 82]
 ID = ['9Cr-{}'.format(str(i).zfill(3)) for i in ID]
 
-path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data'
+path = base_path + '/data_processing/9Cr_data'
 df = pd.read_csv(path + '/Cleaned_data.csv')
 df = df[df.ID.isin(ID)]
 ele = ['Fe', 'C', 'Cr', 'Mn', 'Si', 'Ni', 'Co', 'Mo', 'W', 'Nb', 'Al',
