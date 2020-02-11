@@ -13,9 +13,11 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from xmat_pnnl_code import ProcessData
 from xmat_pnnl_code import GBM
+import xmat_pnnl_code as xcode
 
 #Model data
-path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data/LMP'
+base_path = '/'.join(xcode.__path__[0].split('/')[:-1])
+path = base_path + '/data_processing/9Cr_data/LMP'
 model = np.load(path + '/model_params.npy', allow_pickle=True)[()]
 model = model['9Cr-001']
 
@@ -31,7 +33,7 @@ ID = [1, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
       77, 78, 79, 82]
 ID = ['9Cr-{}'.format(str(i).zfill(3)) for i in ID]
 
-path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data'
+path = base_path + '/data_processing/9Cr_data'
 df = pd.read_csv(path + '/Cleaned_data.csv')
 df = df[df.ID.isin(ID)]
 
@@ -153,7 +155,7 @@ C = np.array([C_data[i] for i in ID])
 xgb = GBM(package='catboost',
           X=data['X'],
           y=data['y'],
-          cv=60,
+          cv=5,
           #grid_search=True,
           #grid_search_scoring='r2',
           #param_grid=parameter_grid,
