@@ -59,7 +59,9 @@ X = df[features].to_numpy(np.float32)
 y = df['CT_RT'].to_numpy(np.float32)
 
 pdata = ProcessData(X=X, y=y, features=features)
-pdata.clean_data()
+#pdata.clean_data(scale_strategy={'strategy': 'power_transform', 
+#    'method': 'yeo-johnson'})
+pdata.clean_data(scale_strategy={'strategy': 'RobustScaler'})
 data = pdata.get_data()
 scale = pdata.scale
 del pdata
@@ -164,8 +166,10 @@ catboost = GBM(package='catboost',
 catboost.run_model()
 print(catboost.__dict__)
 np.save('catboost_res.npy', catboost.__dict__)
-catboost.parity_plot(data='train', quantity='LMP').savefig('parity_LMP_train.png')
-catboost.parity_plot(data='test', quantity='LMP').savefig('parity_LMP_test.png')
+catboost.parity_plot(data='train', 
+        quantity='CT_RT', scheme=1).savefig('parity_CT_RT_train.png')
+catboost.parity_plot(data='test', 
+        quantity='CT_RT', scheme=1).savefig('parity_CT_RT_test.png')
 plt.clf()
 explainer = shap.TreeExplainer(catboost.model[-1])
 shap_values = explainer.shap_values(data['X'])

@@ -16,6 +16,7 @@ class GBM:
             package='lightgbm',
             X=None,
             y=None,
+            model_scheme=None,
             feature_names=None,
             parameters=None,
             cv=5,
@@ -31,6 +32,7 @@ class GBM:
         self.package = package
         self.X = X
         self.y = y
+        self.model_scheme = model_scheme
         self.feature_names = feature_names
         self.parameters = parameters
         self.cv = cv
@@ -97,7 +99,7 @@ class GBM:
                     num_iteration=self.model[-1].best_iteration_)
                 self.y_cv_ts_pred = self.model[-1].predict(self.X[ts_id], 
                     num_iteration=self.model[-1].best_iteration_)
-                if self.CT_RT is not None:
+                if self.model_scheme == 'LMP':
                     self.CT_RT_cv_tr_pred = np.exp((
                         self.y_cv_tr_pred*1000/self.CT_Temp[tr_id]) 
                         - self.C[tr_id])
@@ -107,7 +109,7 @@ class GBM:
             else:
                 self.y_cv_tr_pred = self.model[-1].predict(self.X[tr_id])
                 self.y_cv_ts_pred = self.model[-1].predict(self.X[ts_id])
-                if self.CT_RT is not None:
+                if self.model_scheme == 'LMP':
                     self.CT_RT_cv_tr_pred = np.exp((
                         self.y_cv_tr_pred*1000/self.CT_Temp[tr_id]) 
                         - self.C[tr_id])
@@ -188,7 +190,7 @@ class GBM:
                 early_stopping_rounds=20)
         '''
     
-    def parity_plot(self, data='train', quantity='LMP'):
+    def parity_plot(self, data='train', quantity='LMP', scheme=2):
         """A utility function to plot the parity between predicted and
         actual values.
         Parameters
@@ -198,18 +200,24 @@ class GBM:
         if data not in ['train', 'test']:
             print('data must be either train or test')
             return None
-        if data == 'train' and quantity == 'LMP':
+        if data == 'train' and quantity == 'LMP' and scheme != 1:
             x = self.y_cv_tr
             y = self.y_cv_tr_pred
-        if data == 'test' and quantity == 'LMP':
+        if data == 'test' and quantity == 'LMP' and scheme != 1:
             x = self.y_cv_ts
             y = self.y_cv_ts_pred
-        if data == 'train' and quantity == 'CT_RT':
+        if data == 'train' and quantity == 'CT_RT' and scheme != 1:
             x = self.CT_RT_cv_tr
             y = self.CT_RT_cv_tr_pred
-        if data == 'test' and quantity == 'CT_RT':
+        if data == 'test' and quantity == 'CT_RT' and scheme != 1:
             x = self.CT_RT_cv_ts
             y = self.CT_RT_cv_ts_pred
+        if data == 'train' and quantity == 'CT_RT' and scheme == 1:
+            x = self.y_cv_tr
+            y = self.y_cv_tr_pred
+        if data == 'test' and quantity == 'CT_RT' and scheme == 1:
+            x = self.y_cv_ts
+            y = self.y_cv_ts_pred
         plt.figure(figsize=(10, 8))
         plt.title('Parity plot for {}ing data'.format(data))
         plt.grid(color='b', linestyle='-', linewidth=0.5)

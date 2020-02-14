@@ -158,6 +158,7 @@ C = np.array([C_data[i] for i in ID])
 catboost = GBM(package='catboost',
           X=data['X'],
           y=data['y'],
+          model_scheme='LMP',
           cv=5,
           #grid_search=True,
           #grid_search_scoring='r2',

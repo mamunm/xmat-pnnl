@@ -25,11 +25,13 @@ df[ele] = df[ele].fillna(0)
 df = df.dropna(subset=['CT_RT', 'CT_CS', 'CT_EL', 'CT_RA', 'CT_Temp',
     'AGS No.'])
 df['log_CT_CS'] = np.log(df['CT_CS'])
-features = [i for i in df.columns if i not in ['CT_RT', 'CT_CS', 'ID']]
+df['log_CT_MCR'] = np.log(df['CT_MCR'])
+features = [i for i in df.columns if i not in ['CT_RT', 
+    'CT_CS', 'ID', 'CT_MCR']]
 X = df[features].to_numpy(np.float32)
 y = df['CT_RT'].to_numpy(np.float32)
 pdata = ProcessData(X=X, y=y, features=features)
-pdata.clean_data()
+pdata.clean_data(scale_strategy={'strategy': 'StandardScaler'})
 data = pdata.get_data()
 del pdata
 

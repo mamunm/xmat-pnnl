@@ -1,7 +1,5 @@
 import numpy as np
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
 import sklearn.preprocessing as skpre
 from sklearn.decomposition import PCA
 
@@ -73,24 +71,30 @@ class ProcessData():
         imp = SimpleImputer(strategy=strategy)
         self.X = imp.fit_transform(self.X)
 
-    def scale_data(self, strategy='MinMaxScaler'):
+    def scale_data(self, strategy='MinMaxScaler', **kwargs):
         """Uses skleran StandardScaler or MinMaxScaler to scale data"""
 
         if isinstance(strategy, str):
-            strategy = getattr(skpre, strategy)
-        scale = strategy()
-        self.X = scale.fit_transform(self.X)
-        self.scale = scale
+            strategy_mod = getattr(skpre, strategy)
+        if not strategy == 'power_transform':
+            scale = strategy_mod()
+            self.X = scale.fit_transform(self.X)
+            self.scale = scale
+        else: 
+            self.X = strategy_mod(self.X, **kwargs)
 
-    def clean_data(self):
+    def clean_data(self, scale_strategy=None):
         """Performs all the operations available."""
         self.remove_instance()
         self.remove_null_features()
         self.remove_low_variation()
         self.impute_data()
-        self.scale_data()
+        if not scale_strategy:
+            self.scale_data()
+        else:
+            self.scale_data(**scale_strategy)
 
-    def get_PCA(self, n_pc=10):
+    def get_PCA(se, n_pc=10):
         self.X_PCA = PCA(n_components=n_pc).fit_transform(self.X)
 
     def remove_highly_correlated_features():
