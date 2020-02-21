@@ -154,8 +154,8 @@ parameters = {'iterations': None,
               'monotone_constraints': None}
 
 catboost = GBM(package='catboost',
-          X=data['X'],
-          y=data['y'],
+          X=data['X'][data['y'] < 200000],
+          y=data['y'][data['y'] < 200000],
           feature_names=data['features'],
           cv=5,
           grid_search=False,

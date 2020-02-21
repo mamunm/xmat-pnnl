@@ -2,6 +2,7 @@ import numpy as np
 from sklearn.metrics import (mean_absolute_error, 
         mean_squared_error)
 from scipy.stats import linregress
+from scipy.stats import pearsonr
 from importlib import import_module
 import matplotlib.pyplot as plt
 
@@ -56,40 +57,40 @@ class SKGP:
             val = getattr(import_module('sklearn.model_selection'), 
                     'KFold')(n_splits=int(self.validation.split('-')[0]))
             
-        y_true_test = []
-        y_pred_test = []
-        y_pred_test_unc = []
-        y_true_train = []
-        y_pred_train = []
-        y_pred_train_unc = []
+        self.RMSE_test_cv = []
+        self.RMSE_train_cv = []
+        self.PCC_train_cv = []
+        self.PCC_test_cv = []
         for n, (tr_id, ts_id) in enumerate(val.split(self.y)):
             print('Running validation model no. {}'.format(n+1))
-            XTR, XTS, YTR = self.X[tr_id], self.X[ts_id], self.y[tr_id]
-            temp_model = estimator.fit(XTR, YTR)
-            y_true_test.extend(self.y[ts_id])
-            mean, variance = temp_model.predict(XTS, return_std=True)
-            y_pred_test.extend(mean)
-            y_pred_test_unc.extend(variance)
-            y_true_train.extend(self.y[tr_id])
-            mean, variance = temp_model.predict(XTR, return_std=True)
-            y_pred_train.extend(mean)
-            y_pred_train_unc.extend(variance)
+            temp_model = estimator.fit(self.X[tr_id], self.y[tr_id])
+            YTR_pred, YTR_pred_unc = temp_model.predict(
+                    self.X[tr_id], return_std=True)
+            YTS_pred, YTS_pred_unc = temp_model.predict(
+                    self.X[ts_id], return_std=True)
+            self.RMSE_train_cv.append(np.sqrt(mean_squared_error(
+                YTR_pred, self.y[tr_id])))
+            self.RMSE_test_cv.append(np.sqrt(mean_squared_error(
+                YTS_pred, self.y[ts_id])))
+            self.PCC_train_cv.append(pearsonr(YTR_pred, self.y[tr_id]))
+            self.PCC_test_cv.append(pearsonr(YTS_pred, self.y[ts_id]))
         
-        self.y_true_test = np.array(y_true_test)
-        self.y_true_train = np.array(y_true_train)
-        self.y_pred_test = np.array(y_pred_test)
-        self.y_pred_train = np.array(y_pred_train)
-        self.y_pred_test_unc = np.array(y_pred_test_unc)
-        self.y_pred_train_unc = np.array(y_pred_train_unc)
+        self.y_true_test = np.array(self.y[ts_id])
+        self.y_true_train = np.array(self.y[tr_id])
+        self.y_pred_test = np.array(YTS_pred)
+        self.y_pred_train = np.array(YTR_pred)
+        self.y_pred_test_unc = np.array(YTS_pred_unc)
+        self.y_pred_train_unc = np.array(YTR_pred_unc)
         
-        self.RMSE_test = np.sqrt(mean_squared_error(y_true_test, 
-            y_pred_test))
-        self.RMSE_train = np.sqrt(mean_squared_error(y_true_train, 
-            y_pred_train))
-        self.MAE_test = mean_absolute_error(y_true_test, y_pred_test)
-        self.MAE_train = mean_absolute_error(y_true_train, y_pred_train)
-        self.r2_score_test = linregress(y_true_test, y_pred_test)[2]**2
-        self.r2_score_train = linregress(y_true_train, y_pred_train)[2]**2
+        self.RMSE_train_mean = np.mean(self.RMSE_train_cv)
+        self.RMSE_train_std = np.std(self.RMSE_train_cv)
+        self.RMSE_test_mean = np.mean(self.RMSE_test_cv)
+        self.RMSE_test_std = np.std(self.RMSE_test_cv)
+        self.PCC_train_mean = np.mean([i[0] for i in self.PCC_train_cv if i])
+        self.PCC_train_std = np.std([i[0] for i in self.PCC_train_cv if i])
+        self.PCC_test_mean = np.mean([i[0] for i in self.PCC_test_cv if i])
+        self.PCC_test_std = np.std([i[0] for i in self.PCC_test_cv if i])
+        
         self.final_kernel = estimator.kernel_
         self.log_marginal_likelihood = estimator.log_marginal_likelihood()
 

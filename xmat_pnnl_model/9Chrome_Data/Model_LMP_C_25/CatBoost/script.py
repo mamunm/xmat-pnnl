@@ -48,6 +48,7 @@ df['LMP_Model'] = df.apply(lambda x:
 
 features = [i for i in df.columns if i not in ['CT_RT', 'CT_Temp', 
     'ID', 'CT_CS', 'LMP_Model', 'CT_MCR']]
+df = df[df['CT_RT'] < 200000]
 X = df[features].to_numpy(np.float32)
 y = df['LMP_Model'].to_numpy(np.float32)
 y2 = df[['ID', 'CT_RT', 'CT_Temp', 'CT_CS']].values.tolist()
@@ -151,6 +152,7 @@ ID = [i[0] for i in data['y2']]
 C = np.array([25 for i in ID])
 
 catboost = GBM(package='catboost',
+          model_scheme='LMP',
           X=data['X'],
           y=data['y'],
           feature_names=data['features'],

@@ -9,6 +9,7 @@ from .shapley_features import ShapleyFeatures
 from .sklearn_regression_wrapper import SKREG
 from .sklearn_gridserach_wrapper import SKGridReg
 from .gbm_wrapper import GBM
+from .gbm_learning_curve import GBM_LC
 from .gbm_delta_wrapper import GBM_Delta
 
 __all__ = ['load_data', 
@@ -22,5 +23,6 @@ __all__ = ['load_data',
            'SKREG',
            'SKGridReg',
            'GBM',
+           'GBM_LC',
            'GBM_Delta']
 __version__ = '0.1'
