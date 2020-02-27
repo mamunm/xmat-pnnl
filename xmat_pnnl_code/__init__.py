@@ -11,6 +11,7 @@ from .sklearn_gridserach_wrapper import SKGridReg
 from .gbm_wrapper import GBM
 from .gbm_learning_curve import GBM_LC
 from .gbm_delta_wrapper import GBM_Delta
+from .autoencoder import AutoEncoder
 
 __all__ = ['load_data', 
            'PolyFit', 
@@ -24,5 +25,6 @@ __all__ = ['load_data',
            'SKGridReg',
            'GBM',
            'GBM_LC',
-           'GBM_Delta']
+           'GBM_Delta',
+           'AutoEncoder']
 __version__ = '0.1'

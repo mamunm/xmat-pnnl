@@ -46,53 +46,139 @@ df = df.dropna(subset=['CT_RT', 'CT_CS', 'CT_EL', 'CT_RA', 'CT_Temp',
 df['log_CT_CS'] = np.log(df['CT_CS'])
 df['log_CT_MCR'] = np.log(df['CT_MCR'])
 
-features = [i for i in df.columns if i not in ['CT_RT', 'CT_CS', 
+features = [i for i in df.columns if i not in ['CT_CS', 
     'CT_MCR', 'ID']]
 X = df[features].to_numpy(np.float32)
+#print(X.shape)
 y = df['CT_RT'].to_numpy(np.float32)
 
 pdata = ProcessData(X=X, y=y, features=features)
 #pdata.clean_data(scale_strategy={'strategy': 'power_transform', 
 #    'method': 'yeo-johnson'})
-pdata.clean_data(scale_strategy={'strategy': 'StandardScaler'})
+pdata.clean_data(scale_strategy={'strategy': 'MinMaxScaler'})
 data = pdata.get_data()
 scale = pdata.scale
 #X = scale.inverse_transform(data['X'])
 X = data['X']
 features = data['features']
-del data, pdata, df, y, scale, ID, ele, model
-X_train, X_test = train_test_split(X, test_size=0.2)
+del data, pdata, df, y, ID, ele, model
 
-#Build Autoencoder:
-from keras.layers import Input, Dense
-from keras.models import Model
-
-encoding_dim = 16 
-input_vec = Input(shape=(32,))
-encoded = Dense(encoding_dim, activation='relu')(input_vec)
-encoded = Dense(8, activation='relu')(encoded)
-decoded = Dense(8, activation='relu')(encoded)
-decoded = Dense(32, activation='sigmoid')(decoded)
-
-autoencoder = Model(input_vec, decoded)
-encoder = Model(input_vec, encoded)
-encoded_input = Input(shape=(encoding_dim,))
-decoder_layer = autoencoder.layers[-2:]
-decoder = Model(encoded_input, decoder_layer(encoded_input))
-
-autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
-
-autoencoder.fit(X_train, 
-                X_train, 
-                epochs=500, 
-                batch_size=256, 
-                shuffle=True,
-                validation_data=(X_test, X_test))
-
-encoded_vecs = encoder.predict(X_test)
-decoded_vecs = decoder.predict(encoded_vecs)
+X_train, X_test = train_test_split(X, test_size=0.1)
 
 
-print(X_test[0], decoded_vecs[0])
+#Variational Autoencoder
+from scipy.stats import norm
+from keras import backend as K
+from keras import optimizers
+from keras.layers import Input, Dense, Lambda, Layer, Add, Multiply
+from keras.models import Model, Sequential
+
+original_dim = 33
+intermediate_dim = 22
+latent_dim = 11
+batch_size = 100
+epochs = 100
+epsilon_std = 1.0
 
 
+def nll(y_true, y_pred):
+    """ Negative log likelihood (Bernoulli). """
+
+    # keras.losses.binary_crossentropy gives the mean
+    # over the last axis. we require the sum
+    return K.sum(K.binary_crossentropy(y_true, y_pred), axis=-1)
+'''
+from keras.losses import mse
+
+def nll(y_true, y_pred):
+    return mse(y_true, y_pred)
+'''
+class KLDivergenceLayer(Layer):
+
+    """ Identity transform layer that adds KL divergence
+    to the final model loss.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.is_placeholder = True
+        super(KLDivergenceLayer, self).__init__(*args, **kwargs)
+
+    def call(self, inputs):
+
+        mu, log_var = inputs
+
+        kl_batch = - .5 * K.sum(1 + log_var -
+                                K.square(mu) -
+                                K.exp(log_var), axis=-1)
+
+        self.add_loss(K.mean(kl_batch), inputs=inputs)
+
+        return inputs
+
+
+decoder = Sequential([
+    Dense(intermediate_dim, input_dim=latent_dim, activation='relu'),
+    Dense(original_dim, activation='sigmoid')
+])
+
+x = Input(shape=(original_dim,))
+h = Dense(intermediate_dim, activation='relu')(x)
+
+z_mu = Dense(latent_dim)(h)
+z_log_var = Dense(latent_dim)(h)
+
+z_mu, z_log_var = KLDivergenceLayer()([z_mu, z_log_var])
+z_sigma = Lambda(lambda t: K.exp(.5*t))(z_log_var)
+
+eps = Input(tensor=K.random_normal(stddev=epsilon_std,
+                                   shape=(K.shape(x)[0], latent_dim)))
+z_eps = Multiply()([z_sigma, eps])
+z = Add()([z_mu, z_eps])
+
+x_pred = decoder(z)
+
+vae = Model(inputs=[x, eps], outputs=x_pred)
+sgd = optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+adam = optimizers.Adam(learning_rate=0.001, beta_1=0.9,
+        beta_2=0.999, amsgrad=False)
+#vae.compile(optimizer='rmsprop', loss=nll)
+vae.compile(optimizer=adam, loss=nll)
+
+hist = vae.fit(X_train,
+        X_train,
+        shuffle=True,
+        epochs=epochs,
+        batch_size=batch_size,
+        validation_data=(X_test, X_test))
+
+pd.DataFrame(hist.history).plot()
+plt.show()
+encoder = Model(x, z_mu)
+
+'''
+# display a 2D plot of the digit classes in the latent space
+z_test = encoder.predict(X_test, batch_size=batch_size)
+
+# linearly spaced coordinates on the unit square were transformed
+# through the inverse CDF (ppf) of the Gaussian to produce values
+# of the latent variables z, since the prior of the latent space
+# is Gaussian
+u_grid = np.dstack(np.meshgrid(np.linspace(0.05, 0.95, n),
+                               np.linspace(0.05, 0.95, n)))
+z_grid = norm.ppf(u_grid)
+x_decoded = decoder.predict(z_grid)
+'''
+X_pred = vae.predict(X_test) 
+print(X_test[-1], X_pred[-1])
+X_test = scale.inverse_transform(X_test)
+X_pred = scale.inverse_transform(X_pred)
+for i, j in zip(X_test[-1], X_pred[-1]):
+    print(i, j, 100*(i-j)/i)
+
+z1 = norm.ppf(np.linspace(0.01, 0.99, 10))
+z2 = norm.ppf(np.linspace(0.01, 0.99, 10))
+z_grid = np.dstack(np.meshgrid([norm.ppf(np.linspace(0.01, 0.99, 10)) 
+    for _ in range(110)]))
+
+x_pred_grid = decoder.predict(z_grid.reshape(10*10, latent_dim))
+print(scale.inverse_transform(x_pred_grid))
