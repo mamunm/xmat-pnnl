@@ -8,12 +8,14 @@ from keras import optimizers
 import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 import os
 
 class AutoEncoder:
     
     def __init__(self, arch=None, X=None, loss='mse', 
-            epoch=1000, batch_size=100, optimizer='rmsprop', opt_dict=None):
+            epochs=1000, batch_size=100, optimizer='rmsprop', 
+            opt_dict=None, epsilon_std = 1.0):
         self.arch = arch
         self.X = X
         self.loss = loss
@@ -21,6 +23,7 @@ class AutoEncoder:
         self.batch_size =  batch_size
         self.optimizer = optimizer
         self.opt_dict = opt_dict
+        self.epsilon_std = epsilon_std
 
     def mse(self, y_true, y_pred):
         return mse(y_true, y_pred)
@@ -42,31 +45,35 @@ class AutoEncoder:
         z_log_var = Dense(latent_dim)(h)
         z_mu, z_log_var = KLDivergenceLayer()([z_mu, z_log_var])
         z_sigma = Lambda(lambda t: K.exp(.5*t))(z_log_var)
-        eps = Input(tensor=K.random_normal(stddev=epsilon_std,
+        eps = Input(tensor=K.random_normal(stddev=self.epsilon_std,
             shape=(K.shape(x)[0], latent_dim)))
         z_eps = Multiply()([z_sigma, eps])
         z = Add()([z_mu, z_eps])
-        x_pred = decoder(z)
+        x_pred = self.decoder(z)
         self.vae = Model(inputs=[x, eps], outputs=x_pred)
         
-        if self.optimizer = 'adam' and self.opt_dict == None:
+        if self.optimizer == 'adam' and self.opt_dict == None:
             opt = optimizers.Adam(learning_rate=0.001, beta_1=0.9,
                     beta_2=0.999, amsgrad=False)
-        elif self.optimizer = 'adam':
+        elif self.optimizer == 'adam':
             opt = optimizers.Adam(**self.opt_dict)
 
-        elif self.optimizer = 'sgd' and self.opt_dict == None:
+        elif self.optimizer == 'sgd' and self.opt_dict == None:
             opt = optimizers.SGD(lr=0.01, decay=1e-6, 
                     momentum=0.9, nesterov=True)
         
-        elif self.optimizer = 'sgd':
+        elif self.optimizer == 'sgd':
             opt = optimizers.SGD(**self.opt_dict)
         
         else:
             opt = 'rmsprop'
 
-        self.vae.compile(optimizer=opt, loss=nll)
-        X_train, X_test = train_test_split(X, test_size=0.1)
+        if self.loss == 'mse':
+            self.vae.compile(optimizer=opt, loss=mse)
+        if self.loss == 'bce':
+            self.vae.compile(optimizer=opt, loss=bce)
+
+        X_train, X_test = train_test_split(self.X, test_size=0.1)
         self.hist = self.vae.fit(X_train,
                                  X_train,
                                  shuffle=True,
@@ -82,8 +89,11 @@ class AutoEncoder:
         z_grid = np.dstack(np.meshgrid([norm.ppf(
             np.linspace(0.01, 0.99, n_sample_per_direction)) 
             for _ in range(n_sample_per_direction * latent_dim)]))
-        returnm decoder.predict(z_grid.reshape(
+        return self.decoder.predict(z_grid.reshape(
             n_sample_per_direction*n_sample_per_direction, latent_dim))
+
+    def get_hist_plot(self):
+        return pd.DataFrame(self.hist.history).plot()
 
 class KLDivergenceLayer(Layer):
 

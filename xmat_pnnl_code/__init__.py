@@ -12,6 +12,7 @@ from .gbm_wrapper import GBM
 from .gbm_learning_curve import GBM_LC
 from .gbm_delta_wrapper import GBM_Delta
 from .autoencoder import AutoEncoder
+from .active_learning import ActiveLearning 
 
 __all__ = ['load_data', 
            'PolyFit', 
@@ -26,5 +27,6 @@ __all__ = ['load_data',
            'GBM',
            'GBM_LC',
            'GBM_Delta',
-           'AutoEncoder']
+           'AutoEncoder',
+           'ActiveLearning']
 __version__ = '0.1'
