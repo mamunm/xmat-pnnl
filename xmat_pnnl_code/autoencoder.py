@@ -33,13 +33,22 @@ class AutoEncoder:
 
     def build_model(self):
         original_dim = self.arch[0]
-        intermediate_dim = self.arch[1]
-        latent_dim = self.arch[2]
-        self.decoder = Sequential([
-            Dense(intermediate_dim, input_dim=latent_dim, activation='relu'),
-            Dense(original_dim, activation='sigmoid')])
+        intermediate_dim = self.arch[1:-1]
+        latent_dim = self.arch[-1]
+        decoder_layers = [Dense(intermediate_dim[-1], input_dim=latent_dim, 
+                activation='relu')]
+        odm = intermediate_dim[-1]
+        for idm in intermediate_dim[::-1][1:]:
+            decoder_layers += [Dense(idm, input_dim=odm, activation='relu')]
+            odm = idm
+        decoder_layers +=[Dense(original_dim, activation='sigmoid')]
+        self.decoder = Sequential(decoder_layers)
         x = Input(shape=(original_dim,))
-        h = Dense(intermediate_dim, activation='relu')(x)
+        for n, idm in enumerate(intermediate_dim):
+            if n == 0:
+                h = Dense(idm, activation='relu')(x)
+            else:
+                h = Dense(idm, activation='relu')(h)
 
         z_mu = Dense(latent_dim)(h)
         z_log_var = Dense(latent_dim)(h)

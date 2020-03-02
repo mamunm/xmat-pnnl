@@ -12,8 +12,8 @@ from .gbm_wrapper import GBM
 from .gbm_learning_curve import GBM_LC
 from .gbm_delta_wrapper import GBM_Delta
 from .autoencoder import AutoEncoder
-from .active_learning import ActiveLearning, Scheduler 
-from .acquisition import UCB, LCB, EI, PI
+from .active_learning import ActiveLearning 
+from .acquisition import UCB, LCB, EI, PI, Scheduler
 
 __all__ = ['load_data', 
            'PolyFit', 
