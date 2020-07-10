@@ -4,6 +4,7 @@ from sklearn.metrics import (mean_absolute_error,
 from scipy.stats import linregress
 from importlib import import_module
 import matplotlib.pyplot as plt
+from scipy.stats import pearsonr as pr
 
 class SKREG:
     '''An object to oversee a sklearn regression run and store all the 
@@ -14,13 +15,19 @@ class SKREG:
                 y=None,
                 estimator=None,
                 estimator_param=None,
-                validation=None):
+                validation=None,
+                CT_Temp=None,
+                CT_RT=None,
+                C=None):
 
         self.X = X
         self.y = y
         self.estimator = estimator
         self.estimator_param = estimator_param
         self.validation = validation
+        self.CT_Temp = CT_Temp
+        self.CT_RT = CT_RT
+        self.C = C
 
     def run_reg(self):
 
@@ -56,10 +63,22 @@ class SKREG:
         self.mae_test = []
         self.r2_train = []
         self.r2_test = []
+        self.pr_train = []
+        self.pr_test = []
         self.y_true_train = []
         self.y_pred_train = []
         self.y_true_test = []
         self.y_pred_test = []
+        if self.CT_RT is not None:
+            self.rmse_CT_RT_train = []
+            self.rmse_CT_RT_test = []
+            self.mae_CT_RT_train = []
+            self.mae_CT_RT_test = []
+            self.r2_CT_RT_train = []
+            self.r2_CT_RT_test = []
+            self.pr_CT_RT_train = []
+            self.pr_CT_RT_test = []
+
         for n, (tr_id, ts_id) in enumerate(val.split(self.y)):
             print('Running validation model no. {}'.format(n+1))
             XTR, XTS, YTR = self.X[tr_id], self.X[ts_id], self.y[tr_id]
@@ -78,6 +97,32 @@ class SKREG:
             self.mae_test.append(mean_absolute_error(y_pred, y_true))
             self.r2_train.append(linregress(y_pred_train, YTR)[2]**2)
             self.r2_test.append(linregress(y_pred, y_true)[2]**2)
+            self.pr_train.append(pr(y_pred_train.reshape(-1), YTR.reshape(-1)))
+            self.pr_test.append(pr(y_pred.reshape(-1), y_true.reshape(-1)))
+            
+            if self.CT_RT is not None:
+                CT_RT_train_pred = np.exp((
+                    y_pred_train*1000/self.CT_Temp[tr_id]) - self.C[tr_id])
+                CT_RT_train_true = self.CT_RT[tr_id]
+                CT_RT_test_pred = np.exp((
+                    y_pred*1000/self.CT_Temp[ts_id]) - self.C[ts_id])
+                CT_RT_test_true = self.CT_RT[ts_id]
+                self.rmse_CT_RT_train.append(np.sqrt(mean_squared_error(
+                    CT_RT_train_pred, CT_RT_train_true)))
+                self.rmse_CT_RT_test.append(np.sqrt(mean_squared_error(
+                    CT_RT_test_pred, CT_RT_test_true)))
+                self.mae_CT_RT_train.append(mean_absolute_error(
+                    CT_RT_train_pred, CT_RT_train_true))
+                self.mae_CT_RT_test.append(
+                        mean_absolute_error(CT_RT_test_pred, CT_RT_test_true))
+                self.r2_CT_RT_train.append(
+                        linregress(CT_RT_train_pred, CT_RT_train_true)[2]**2)
+                self.r2_CT_RT_test.append(
+                        linregress(CT_RT_test_pred, CT_RT_test_true)[2]**2)
+                self.pr_CT_RT_train.append(pr(CT_RT_train_pred.reshape(-1), 
+                    CT_RT_train_true.reshape(-1)))
+                self.pr_CT_RT_test.append(pr(
+                    CT_RT_test_pred.reshape(-1), CT_RT_test_true.reshape(-1)))
 
         self.rmse_train_mean = np.mean(self.rmse_train)
         self.rmse_train_std = np.std(self.rmse_train)
@@ -85,6 +130,17 @@ class SKREG:
         self.mae_train_std = np.std(self.mae_train)
         self.r2_train_mean = np.mean(self.r2_train)
         self.r2_train_std = np.std(self.r2_train)
+        self.pr_train_mean = np.mean(self.pr_train)
+        self.pr_train_std = np.std(self.pr_train)
+        if self.CT_RT is not None:
+            self.rmse_CT_RT_train_mean = np.mean(self.rmse_CT_RT_train)
+            self.rmse_CT_RT_train_std = np.std(self.rmse_CT_RT_train)
+            self.mae_CT_RT_train_mean = np.mean(self.mae_CT_RT_train)
+            self.mae_CT_RT_train_std = np.std(self.mae_CT_RT_train)
+            self.r2_CT_RT_train_mean = np.mean(self.r2_CT_RT_train)
+            self.r2_CT_RT_train_std = np.std(self.r2_CT_RT_train)
+            self.pr_CT_RT_train_mean = np.mean(self.pr_CT_RT_train)
+            self.pr_CT_RT_train_std = np.std(self.pr_CT_RT_train)
         
         self.rmse_test_mean = np.mean(self.rmse_test)
         self.rmse_test_std = np.std(self.rmse_test)
@@ -92,6 +148,17 @@ class SKREG:
         self.mae_test_std = np.std(self.mae_test)
         self.r2_test_mean = np.mean(self.r2_test)
         self.r2_test_std = np.std(self.r2_test)
+        self.pr_test_mean = np.mean(self.pr_test)
+        self.pr_test_std = np.std(self.pr_test)
+        if self.CT_RT is not None:
+            self.rmse_CT_RT_test_mean = np.mean(self.rmse_CT_RT_test)
+            self.rmse_CT_RT_test_std = np.std(self.rmse_CT_RT_test)
+            self.mae_CT_RT_test_mean = np.mean(self.mae_CT_RT_test)
+            self.mae_CT_RT_test_std = np.std(self.mae_CT_RT_test)
+            self.r2_CT_RT_test_mean = np.mean(self.r2_CT_RT_test)
+            self.r2_CT_RT_test_std = np.std(self.r2_CT_RT_test)
+            self.pr_CT_RT_test_mean = np.mean(self.pr_CT_RT_test)
+            self.pr_CT_RT_test_std = np.std(self.pr_CT_RT_test)
 
     def plot_parity(self, data='train'):
         """A utility function to plot the parity between predicted and 

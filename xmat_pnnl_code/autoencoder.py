@@ -1,127 +1,113 @@
-from keras.layers import Lambda, Input, Dense, Layer, Add, Multiply
-from keras.models import Model, Sequential
+import keras
+from keras.layers import Lambda, Input, Dense
+from keras.models import Model
+from keras.datasets import mnist
 from keras.losses import mse, binary_crossentropy
 from keras.utils import plot_model
 from keras import backend as K
-from keras import optimizers
 
 import numpy as np
-from scipy.stats import norm
-import matplotlib.pyplot as plt
+import pandas as pd
 from sklearn.model_selection import train_test_split
-import os
+
+def sampling(args):
+    z_mean, z_log_var = args
+    batch = K.shape(z_mean)[0]
+    dim = K.int_shape(z_mean)[1]
+    epsilon = K.random_normal(shape=(batch, dim))
+    return z_mean + K.exp(0.5 * z_log_var) * epsilon
 
 class AutoEncoder:
-    
-    def __init__(self, arch=None, X=None, loss='mse', 
-            epochs=1000, batch_size=100, optimizer='rmsprop', 
-            opt_dict=None, epsilon_std = 1.0):
+    def __init__(self, X=None, 
+                       train_size=0.8, 
+                       arch=None,
+                       loss='xent',
+                       epochs=1000,
+                       batch_size=128,
+                       optimizer='adam',
+                       weights=None,
+                       ):
+        self.X_train, self.X_test = train_test_split(X, train_size=train_size)
         self.arch = arch
-        self.X = X
         self.loss = loss
         self.epochs = epochs
-        self.batch_size =  batch_size
+        self.batch_size = batch_size
         self.optimizer = optimizer
-        self.opt_dict = opt_dict
-        self.epsilon_std = epsilon_std
-
-    def mse(self, y_true, y_pred):
-        return mse(y_true, y_pred)
-
-    def bce(self, y_true, y_pred):
-        return K.sum(K.binary_crossentropy(y_true, y_pred), axis=-1)
+        self.weights = weights
 
     def build_model(self):
-        original_dim = self.arch[0]
-        intermediate_dim = self.arch[1:-1]
-        latent_dim = self.arch[-1]
-        decoder_layers = [Dense(intermediate_dim[-1], input_dim=latent_dim, 
-                activation='relu')]
-        odm = intermediate_dim[-1]
-        for idm in intermediate_dim[::-1][1:]:
-            decoder_layers += [Dense(idm, input_dim=odm, activation='relu')]
-            odm = idm
-        decoder_layers +=[Dense(original_dim, activation='sigmoid')]
-        self.decoder = Sequential(decoder_layers)
-        x = Input(shape=(original_dim,))
-        for n, idm in enumerate(intermediate_dim):
-            if n == 0:
-                h = Dense(idm, activation='relu')(x)
-            else:
-                h = Dense(idm, activation='relu')(h)
-
-        z_mu = Dense(latent_dim)(h)
-        z_log_var = Dense(latent_dim)(h)
-        z_mu, z_log_var = KLDivergenceLayer()([z_mu, z_log_var])
-        z_sigma = Lambda(lambda t: K.exp(.5*t))(z_log_var)
-        eps = Input(tensor=K.random_normal(stddev=self.epsilon_std,
-            shape=(K.shape(x)[0], latent_dim)))
-        z_eps = Multiply()([z_sigma, eps])
-        z = Add()([z_mu, z_eps])
-        x_pred = self.decoder(z)
-        self.vae = Model(inputs=[x, eps], outputs=x_pred)
-        
-        if self.optimizer == 'adam' and self.opt_dict == None:
-            opt = optimizers.Adam(learning_rate=0.001, beta_1=0.9,
-                    beta_2=0.999, amsgrad=False)
-        elif self.optimizer == 'adam':
-            opt = optimizers.Adam(**self.opt_dict)
-
-        elif self.optimizer == 'sgd' and self.opt_dict == None:
-            opt = optimizers.SGD(lr=0.01, decay=1e-6, 
-                    momentum=0.9, nesterov=True)
-        
-        elif self.optimizer == 'sgd':
-            opt = optimizers.SGD(**self.opt_dict)
-        
+        # build encoder model
+        inputs = Input(shape=(self.X_train.shape[1], ), name='encoder_input')
+        x = Dense(self.arch[1], activation='relu')(inputs)
+        if len(self.arch) == 4:
+            x = Dense(self.arch[2], activation='relu')(x)
+        z_mean = Dense(self.arch[-1], name='z_mean')(x)
+        z_log_var = Dense(self.arch[-1], name='z_log_var')(x)
+        z = Lambda(sampling, output_shape=(self.arch[-1],), 
+                name='z')([z_mean, z_log_var])
+        self.encoder = Model(inputs, [z_mean, z_log_var, z], name='encoder')
+        self.encoder.summary()
+        #plot_model(encoder, to_file='vae_mlp_encoder.png', show_shapes=True)
+        # build decoder model
+        latent_inputs = Input(shape=(self.arch[-1],), name='z_sampling')
+        if len(self.arch) == 4:
+            x = Dense(self.arch[2], activation='relu')(latent_inputs)
+            x = Dense(self.arch[1], activation='relu')(x)
         else:
-            opt = 'rmsprop'
+            x = Dense(self.arch[1], activation='relu')(latent_inputs)
 
-        if self.loss == 'mse':
-            self.vae.compile(optimizer=opt, loss=mse)
-        if self.loss == 'bce':
-            self.vae.compile(optimizer=opt, loss=bce)
+        outputs = Dense(self.X_train.shape[1], activation='sigmoid')(x)
+        # instantiate decoder model
+        self.decoder = Model(latent_inputs, outputs, name='decoder')
+        self.decoder.summary()
+        #plot_model(decoder, to_file='vae_mlp_decoder.png', show_shapes=True)
 
-        X_train, X_test = train_test_split(self.X, test_size=0.1)
-        self.hist = self.vae.fit(X_train,
-                                 X_train,
-                                 shuffle=True,
-                                 epochs=self.epochs,
-                                 batch_size=self.batch_size,
-                                 validation_data=(X_test, X_test))
-    
+        # instantiate VAE model
+        outputs = self.decoder(self.encoder(inputs)[2])
+        self.vae = Model(inputs, outputs, name='vae_mlp')
+
+        if self.loss not in ["mse", "xent"]:
+            raise KeyError("The loss function is not available.")
+        if self.loss == "mse":
+            reconstruction_loss = mse(inputs, outputs)
+        if self.loss == "xent":
+            reconstruction_loss = binary_crossentropy(inputs, outputs)
+
+        reconstruction_loss *= self.X_train.shape[1]
+        kl_loss = 1 + z_log_var - K.square(z_mean) - K.exp(z_log_var)
+        kl_loss = K.sum(kl_loss, axis=-1)
+        kl_loss *= -0.5
+        vae_loss = K.mean(reconstruction_loss + kl_loss)
+        self.vae.add_loss(vae_loss)
+        self.vae.compile(optimizer=self.optimizer)
+        
+        # train the autoencoder
+        if not self.weights:
+            self.vae.fit(self.X_train,
+                        epochs=self.epochs,
+                        batch_size=self.batch_size,
+                        validation_data=(self.X_test, None))
+        else:
+            self.vae.load_weights(self.weights + ".h5")
+
+    def save_model(self, f_name):
+        self.vae.save_weights(f_name + ".h5")
+
     def predict(self, X):
         return self.vae.predict(X)
 
-    def get_random_alloy(self, n_sample_per_direction=10):
-        latent_dim = self.arch[-1]
-        z_grid = np.dstack(np.meshgrid([norm.ppf(
-            np.linspace(0.01, 0.99, n_sample_per_direction)) 
-            for _ in range(n_sample_per_direction * latent_dim)]))
-        return self.decoder.predict(z_grid.reshape(
-            n_sample_per_direction*n_sample_per_direction, latent_dim))
+    def get_random_alloy(self, n_samples=400):
+        return self.decoder.predict(np.random.normal(0, 1,
+            size=(n_samples, self.arch[-1])))
+
+    def get_linspace_alloy(self, n_range=(-1, 1), n_sample_per_direction=10):
+
+        return self.decoder.predict(np.array(np.meshgrid(
+            [np.linspace(*n_range, n_sample_per_direction)
+                for _ in range(self.arch[-1])])).T.reshape(-1, self.arch[-1]))
 
     def get_hist_plot(self):
         return pd.DataFrame(self.hist.history).plot()
 
-class KLDivergenceLayer(Layer):
-
-    """ Identity transform layer that adds KL divergence
-    to the final model loss.
-    """
-
-    def __init__(self, *args, **kwargs):
-        self.is_placeholder = True
-        super(KLDivergenceLayer, self).__init__(*args, **kwargs)
-
-    def call(self, inputs):
-
-        mu, log_var = inputs
-
-        kl_batch = - .5 * K.sum(1 + log_var -
-                                K.square(mu) -
-                                K.exp(log_var), axis=-1)
-
-        self.add_loss(K.mean(kl_batch), inputs=inputs)
-
-        return inputs
+    def get_hist(self):
+        return pd.DataFrame(self.hist.history)

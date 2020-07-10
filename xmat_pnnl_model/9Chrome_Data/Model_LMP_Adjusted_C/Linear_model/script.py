@@ -16,7 +16,7 @@ def get_LMP(A):
     return (A['log_CT_CS'] - model['intercept']) / model['coef']
 
 #Model data
-path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data/LMP'
+path = '/Users/osmanmamun/PNNL_Mac/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data/LMP'
 model = np.load(path + '/model_params.npy', allow_pickle=True)[()]
 model = model['9Cr-001']
 
@@ -32,7 +32,7 @@ ID = [1, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
       77, 78, 79, 82]
 ID = ['9Cr-{}'.format(str(i).zfill(3)) for i in ID]
 
-path = '/Users/mamu867/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data'
+path = '/Users/osmanmamun/PNNL_Mac/PNNL_Code_Base/xmat-pnnl/data_processing/9Cr_data'
 df = pd.read_csv(path + '/Cleaned_data.csv')
 df = df[df.ID.isin(ID)]
 df = df[['ID', 'CT_CS', 'CT_Temp', 'CT_RT']]

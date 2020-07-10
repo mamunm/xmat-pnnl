@@ -52,6 +52,7 @@ df['LMP_Model'] = df.apply(lambda x:
 
 features = [i for i in df.columns if i not in ['CT_RT', 'CT_Temp', 
     'ID', 'CT_CS', 'LMP_Model', 'CT_MCR']]
+features = [i for i in features if 'Weighted' not in i]
 df = df[df['CT_RT'] < 200000]
 X = df[features].to_numpy(np.float32)
 y = df['LMP_Model'].to_numpy(np.float32)
@@ -172,12 +173,15 @@ catboost = GBM(package='catboost',
 
 catboost.run_model()
 print(catboost.__dict__)
+
+'''
 catboost.parity_plot(data='train', quantity='LMP').savefig('parity_LMP_train.png')
 catboost.parity_plot(data='test', quantity='LMP').savefig('parity_LMP_test.png')
 catboost.parity_plot(data='train', quantity='CT_RT').savefig('parity_CT_RT_train.png')
 catboost.parity_plot(data='test', quantity='CT_RT').savefig('parity_CT_RT_test.png')
 np.save('catboost_dict.npy', catboost.__dict__)
 plt.clf()
+'''
 explainer = shap.TreeExplainer(catboost.model[-1])
 shap_values = explainer.shap_values(data['X'])
 

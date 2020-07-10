@@ -78,9 +78,9 @@ class GBM:
                'xgboost': xgboost.XGBRegressor}
         
         self.model = []
-        model = est[self.package](**self.parameters)
         for n, (tr_id, ts_id) in enumerate(cv.split(self.y)):
             print('Running Validation {} of {}'.format(n, self.cv))
+            model = est[self.package](**self.parameters)
             if self.package == 'lightgbm':
                 self.model.append(model.fit(self.X[tr_id], self.y[tr_id],
                     eval_set=[(self.X[ts_id], self.y[ts_id])],

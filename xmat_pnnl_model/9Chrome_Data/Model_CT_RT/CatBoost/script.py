@@ -55,6 +55,7 @@ df['log_CT_MCR'] = np.log(df['CT_MCR'])
 
 features = [i for i in df.columns if i not in ['CT_RT', 'CT_CS', 
     'CT_MCR', 'ID']]
+features = [i for i in features if 'Weighted' not in i]
 X = df[features].to_numpy(np.float32)
 y = df['CT_RT'].to_numpy(np.float32)
 
@@ -65,44 +66,6 @@ pdata.clean_data(scale_strategy={'strategy': 'RobustScaler'})
 data = pdata.get_data()
 scale = pdata.scale
 del pdata
-
-'''
-parameters_grid = {'boosting_type': ['gbdt', 'goss'],
-              'num_leaves': [100, 200],
-              'max_depth': [-1],
-              'learning_rate': [0.01],
-              'n_estimators': [100, 200],
-              'subsample_for_bin': [200000],
-              'objective': [None],
-              'class_weight': [None],
-              'min_split_gain': [0.0],
-              'min_child_weight': [0.001],
-              'min_child_samples': [20],
-              'subsample': [1.0],
-              'subsample_freq': [0],
-              'colsample_bytree': [1.0],
-              'reg_alpha': [0.0],
-              'reg_lambda': [0.0],
-              'random_state': [42],
-              'n_jobs': [-1],
-              'silent': [True],
-              'importance_type' : ['split'],
-              'num_boost_round': [2000],
-              'tree_learner': ['serial', 'feature', 'data', 'voting'],
-              'boost_from_average': [True, False],
-              'alpha': [0.1, 0.5, 0.9, 1.0]}
-              #'bagging_fraction': [0.2]}
-
-lgb = LGBM(X=X,
-           y=y,
-           cv=5,
-           grid_search=True,
-           eval_metric='rmse',
-           param_grid=parameters_grid)
-
-lgb.run_model()
-print(lgb.__dict__)
-'''
 
 parameters = {'iterations': None,
               'learning_rate': None,

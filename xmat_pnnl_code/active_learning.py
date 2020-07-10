@@ -20,6 +20,7 @@ class ActiveLearning:
             self.acquisition = PI(**acquisition_params)
 
     def run_model(self):
+        pass
         
     
 

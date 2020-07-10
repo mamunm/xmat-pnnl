@@ -13,7 +13,7 @@ class Scheduler:
         self.decay = decay
 
     def __call__(self):
-        self.param_val -= decay
+        self.param_val -= self.decay
         return self.param_val
 
 class LCB(AcquisitionFunction):
@@ -25,7 +25,7 @@ class LCB(AcquisitionFunction):
         return mu - k * sigma
 
 class UCB(AcquisitionFunction):
-    def __init__(self, kappa=1, decay=decay):
+    def __init__(self, kappa=1, decay=0):
         self.kappa = Scheduler(param_val=kappa, decay=decay)
 
     def __call__(self, mu, sigma):

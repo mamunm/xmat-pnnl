@@ -9,11 +9,13 @@ from .shapley_features import ShapleyFeatures
 from .sklearn_regression_wrapper import SKREG
 from .sklearn_gridserach_wrapper import SKGridReg
 from .gbm_wrapper import GBM
+from .vae_gbm_wrapper import VaeGBM
 from .gbm_learning_curve import GBM_LC
 from .gbm_delta_wrapper import GBM_Delta
 from .autoencoder import AutoEncoder
 from .active_learning import ActiveLearning 
 from .acquisition import UCB, LCB, EI, PI, Scheduler
+from .greedy_linear_search import TopDown, BottomUp
 
 __all__ = ['load_data', 
            'PolyFit', 
@@ -26,6 +28,7 @@ __all__ = ['load_data',
            'SKREG',
            'SKGridReg',
            'GBM',
+           'VaeGbm',
            'GBM_LC',
            'GBM_Delta',
            'AutoEncoder',
@@ -34,5 +37,8 @@ __all__ = ['load_data',
            'LCB',
            'EI',
            'PI',
-           'Scheduler']
+           'Scheduler',
+           'TopDown',
+           'BottomUp']
+
 __version__ = '0.1'
