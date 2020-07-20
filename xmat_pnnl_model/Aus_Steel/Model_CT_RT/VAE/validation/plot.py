@@ -41,7 +41,7 @@ pca_reconstructed = PCA(n_components=2).fit_transform(data['X_reconstructed'])
 pca_real = PCA(n_components=2).fit_transform(data['X_real'])
 
 plt.figure(figsize=(9, 7))
-plt.title('Principal Component Analysis for VAE validation.', fontsize=16)
+#plt.title('Principal Component Analysis for VAE validation.', fontsize=16)
 plt.grid(color='green', linestyle='dotted', linewidth=0.8)
 plt.xlabel(r"$X_1$", fontsize=16)
 plt.ylabel(r"$X_2$", fontsize=16)
